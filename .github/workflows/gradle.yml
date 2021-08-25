@@ -1,0 +1,63 @@
+# Gradle CI for building / testing / packaging the plugin
+name: Gradle CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  build-and-test:
+    name: Build and test Gradle Plugin
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+      
+      # 1) setup Java
+      - name: Set up Java 11
+        uses: actions/setup-java@v2
+        with:
+          java-version: '11'
+          distribution: 'adopt'
+          architecture: x64
+      
+      # 2) grant execute permission
+      - name: Grant permission
+        run: chmod +x gradlew
+      
+      # 3) build plugin
+      - name: Build plugin
+        run: ./gradlew build --refresh-dependencies
+        
+      # 4) test plugin
+      - name: Test plugin
+        run: ./gradlew test
+      
+      # 5) JaCoCo plugin
+      - name: JaCoCo
+        run: ./gradlew jacocoTestReport
+      
+      # 6) publish jUnit results
+      - name: Test results
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        if: always()
+        with:
+          files: build/test-results/test/*.xml
+      
+      # 7) publish JaCoCo reports
+      - name: JaCoCo coverage
+        uses: cicirello/jacoco-badge-generator@v2
+        with:
+          jacoco-csv-file: build/reports/jacoco/test/jacocoTestReport.csv
+
+      # 8) commit changes
+      - name: commit badges
+        uses: EndBug/add-and-commit@v7
+        with:
+          default_author: github_actions
+          message: 'upload badge'
+          add: '*.svg'
