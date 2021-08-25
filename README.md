@@ -2,7 +2,7 @@
 
 ![example workflow](https://github.com/thahnen/RunTestsSeperateJVMPlugin/actions/workflows/gradle.yml/badge.svg)
 ![example workflow](https://github.com/thahnen/RunTestsSeperateJVMPlugin/actions/workflows/gradle_validation.yml/badge.svg)
-[![Coverage](.github/badges/jacoco.svg)](https://github.com/thahnen/UniformDependenciesPlugin/actions/workflows/gradle.yml)
+[![Coverage](.github/badges/jacoco.svg)](https://github.com/thahnen/RunTestsSeperateJVMPlugin/actions/workflows/gradle.yml)
 
 Gradle plugin to configure jUnit tests which should be run in a separate JVM. Also allows distinguishing between running
 tests sequentially or in parallel.
