@@ -28,19 +28,18 @@ import org.gradle.kotlin.dsl.register
  */
 open class RunTestsSeparateJVMPlugin : Plugin<Project> {
 
-    // identifiers of properties connected to this plugin
-    private val KEY_SEQUENTIAL  = "plugins.runtestsseparatejvm.listOfTests.sequential"
-    private val KEY_PARALLEL    = "plugins.runtestsseparatejvm.listOfTests.parallel"
-
-    // extension name
-    private val KEY_EXTENSION = "RunTestsSeparateJVMExtension"
-
-    // new task names
-    private val sequentialTestsTaskName = "testSeparateJVMSequentially"
-    private val parallelTestsTaskName   = "testSeparateJVMInParallel"
-
-
     companion object {
+        // identifiers of properties connected to this plugin
+        internal val KEY_SEQUENTIAL  = "plugins.runtestsseparatejvm.listOfTests.sequential"
+        internal val KEY_PARALLEL    = "plugins.runtestsseparatejvm.listOfTests.parallel"
+
+        // extension name
+        private val KEY_EXTENSION = "RunTestsSeparateJVMExtension"
+
+        // new task names
+        private val sequentialTestsTaskName = "testSeparateJVMSequentially"
+        private val parallelTestsTaskName   = "testSeparateJVMInParallel"
+
         /**
          *  Parses a list of values separated by comma to set
          *
@@ -81,8 +80,8 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
 
         // 4) custom extension to store tha data
         val extension = target.extensions.create<RunTestsSeparateJVMPluginExtension>(KEY_EXTENSION)
-        sequentialTests?.let { extension.sequentialTests.set(it) }
-        parallelTests?.let { extension.parallelTests.set(it) }
+        sequentialTests?.let { extension.sequentialTests.set(it) } ?: run { extension.sequentialTests.empty() }
+        parallelTests?.let { extension.parallelTests.set(it) } ?: run { extension.parallelTests.empty() }
 
         // 5) register new task of type "Test" for jUnit tests running sequentially in separate JVM
         sequentialTests?.let {

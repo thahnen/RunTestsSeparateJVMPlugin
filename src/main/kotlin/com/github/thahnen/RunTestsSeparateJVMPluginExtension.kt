@@ -1,6 +1,6 @@
 package com.github.thahnen
 
-import org.gradle.api.provider.Property
+import org.gradle.api.provider.SetProperty
 
 
 /**
@@ -14,8 +14,8 @@ import org.gradle.api.provider.Property
 abstract class RunTestsSeparateJVMPluginExtension {
 
     /** stores all jUnit test classes which should be run in separate JVM but executed sequentially */
-    abstract val sequentialTests: Property<Set<String>>
+    abstract val sequentialTests: SetProperty<String>
 
     /** stores all jUnit test classes which should be run in separate JVM but executed in parallel */
-    abstract val parallelTests: Property<Set<String>>
+    abstract val parallelTests: SetProperty<String>
 }
