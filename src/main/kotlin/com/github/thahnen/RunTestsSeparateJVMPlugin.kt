@@ -118,9 +118,7 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         sequentialTests?.let {
             target.tasks.withType(Test::class.java) {
                 if (this.name != sequentialTestsTaskName) {
-                    filter {
-                        it.forEach { excludeTestsMatching(it) }
-                    }
+                    filter { it.forEach { excludeTestsMatching(it) } }
                 }
             }
         }
@@ -129,11 +127,15 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         parallelTests?.let {
             target.tasks.withType(Test::class.java) {
                 if (this.name != parallelTestsTaskName) {
-                    filter {
-                        it.forEach { excludeTestsMatching(it) }
-                    }
+                    filter { it.forEach { excludeTestsMatching(it) } }
                 }
             }
+        }
+
+        // 9) create general Gradle "test" task dependsOn from tasks created
+        target.tasks.named("test", Test::class.java) {
+            sequentialTests?.let { this.dependsOn(sequentialTestsTaskName) }
+            parallelTests?.let { this.dependsOn(parallelTestsTaskName) }
         }
     }
 
