@@ -122,9 +122,33 @@ open class RunTestsSeparateJVMPluginTest {
 
 
     /** 4) Tests applying the plugin (with incorrect environment variables used) */
-    /*@Test fun testApplyPluginWithIncorrectEnvironmentVariablesToProject() {
-        //
-    }*/
+    @Test fun testApplyPluginWithIncorrectEnvironmentVariablesToProject() {
+        listOf(wrong1Properties, wrong2Properties).forEach {
+            val project = ProjectBuilder.builder().build()
+
+            // apply Java plugin
+            project.pluginManager.apply(JavaPlugin::class.java)
+
+            withEnvironmentVariable(
+                RunTestsSeparateJVMPlugin.KEY_SEQUENTIAL,
+                it[RunTestsSeparateJVMPlugin.KEY_SEQUENTIAL] as String
+            ).and(
+                RunTestsSeparateJVMPlugin.KEY_PARALLEL,
+                it[RunTestsSeparateJVMPlugin.KEY_PARALLEL] as String
+            ).execute {
+                try {
+                    // try applying plugin (should fail)
+                    project.pluginManager.apply(RunTestsSeparateJVMPlugin::class.java)
+                } catch (e: Exception) {
+                    // assert applying did not work
+                    // INFO: equal to check on InvalidUserDataException as it is based on it
+                    assert(e.cause is PropertiesEntryInvalidException)
+                }
+
+                Assert.assertFalse(project.plugins.hasPlugin(RunTestsSeparateJVMPlugin::class.java))
+            }
+        }
+    }
 
 
     /** 5) Tests applying the plugin (with correct project properties file) */
