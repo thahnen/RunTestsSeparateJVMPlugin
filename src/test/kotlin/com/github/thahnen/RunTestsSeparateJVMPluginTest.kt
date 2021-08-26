@@ -231,7 +231,90 @@ open class RunTestsSeparateJVMPluginTest {
 
 
     /** 8) Tests applying the plugin and evaluates that the tasks created are correct */
-    /*@Test fun testEvaluateTasks() {
-        //
-    }*/
+    @Test fun testEvaluateTasks() {
+        val project = ProjectBuilder.builder().build()
+
+        // apply Java plugin
+        project.pluginManager.apply(JavaPlugin::class.java)
+
+        // project gradle.properties reference (project_correct1.properties.set can not be used directly!)
+        val propertiesExtension = project.extensions.getByType(ExtraPropertiesExtension::class.java)
+        correct1Properties.keys.forEach { key ->
+            propertiesExtension[key as String] = correct1Properties.getProperty(key)
+        }
+
+        // apply plugin
+        project.pluginManager.apply(RunTestsSeparateJVMPlugin::class.java)
+
+        // assert that tasks "testSeparateJVMSequentially" / "testSeparateJVMInParallel" added correctly
+        val testSequentially = project.tasks.getByName(RunTestsSeparateJVMPlugin.sequentialTestsTaskName) as org.gradle.api.tasks.testing.Test
+        val testInParallel = project.tasks.getByName(RunTestsSeparateJVMPlugin.parallelTestsTaskName) as org.gradle.api.tasks.testing.Test
+
+        Assert.assertEquals("verification", testSequentially.group)
+        Assert.assertEquals(1, testSequentially.maxParallelForks)
+        Assert.assertEquals(1, testSequentially.forkEvery)
+        Assert.assertEquals(
+            RunTestsSeparateJVMPlugin.parseListByCommas(
+                propertiesExtension[RunTestsSeparateJVMPlugin.KEY_SEQUENTIAL] as String
+            ),
+            testSequentially.filter.includePatterns
+        )
+        Assert.assertEquals(
+            RunTestsSeparateJVMPlugin.parseListByCommas(
+                propertiesExtension[RunTestsSeparateJVMPlugin.KEY_PARALLEL] as String
+            ),
+            testSequentially.filter.excludePatterns
+        )
+
+        Assert.assertEquals("verification", testInParallel.group)
+        Assert.assertEquals(1, testInParallel.forkEvery)
+        Assert.assertEquals(
+            RunTestsSeparateJVMPlugin.parseListByCommas(
+                propertiesExtension[RunTestsSeparateJVMPlugin.KEY_PARALLEL] as String
+            ),
+            testInParallel.filter.includePatterns
+        )
+        Assert.assertEquals(
+            RunTestsSeparateJVMPlugin.parseListByCommas(
+                propertiesExtension[RunTestsSeparateJVMPlugin.KEY_SEQUENTIAL] as String
+            ),
+            testInParallel.filter.excludePatterns
+        )
+    }
+
+
+    /** 9) Tests applying the plugin and evaluates the standard "test" task */
+    @Test fun testEvaluateGradleTestTask() {
+        val project = ProjectBuilder.builder().build()
+
+        // apply Java plugin
+        project.pluginManager.apply(JavaPlugin::class.java)
+
+        // project gradle.properties reference (project_correct1.properties.set can not be used directly!)
+        val propertiesExtension = project.extensions.getByType(ExtraPropertiesExtension::class.java)
+        correct1Properties.keys.forEach { key ->
+            propertiesExtension[key as String] = correct1Properties.getProperty(key)
+        }
+
+        // apply plugin
+        project.pluginManager.apply(RunTestsSeparateJVMPlugin::class.java)
+
+        // assert that standard Gradle "test" task configured correctly
+        val testTask = project.tasks.getByName("test") as org.gradle.api.tasks.testing.Test
+
+        listOf(RunTestsSeparateJVMPlugin.sequentialTestsTaskName, RunTestsSeparateJVMPlugin.parallelTestsTaskName).forEach {
+            Assert.assertTrue(testTask.dependsOn.contains(it))
+        }
+
+        listOf(
+            RunTestsSeparateJVMPlugin.parseListByCommas(
+                propertiesExtension[RunTestsSeparateJVMPlugin.KEY_SEQUENTIAL] as String
+            ),
+            RunTestsSeparateJVMPlugin.parseListByCommas(
+                propertiesExtension[RunTestsSeparateJVMPlugin.KEY_PARALLEL] as String
+            )
+        ).forEach {
+            Assert.assertTrue(testTask.filter.excludePatterns.containsAll(it))
+        }
+    }
 }

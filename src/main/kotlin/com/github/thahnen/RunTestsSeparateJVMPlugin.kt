@@ -34,11 +34,11 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         internal val KEY_PARALLEL    = "plugins.runtestsseparatejvm.listOfTests.parallel"
 
         // extension name
-        private val KEY_EXTENSION = "RunTestsSeparateJVMExtension"
+        internal val KEY_EXTENSION = "RunTestsSeparateJVMExtension"
 
         // new task names
-        private val sequentialTestsTaskName = "testSeparateJVMSequentially"
-        private val parallelTestsTaskName   = "testSeparateJVMInParallel"
+        internal val sequentialTestsTaskName = "testSeparateJVMSequentially"
+        internal val parallelTestsTaskName   = "testSeparateJVMInParallel"
 
         /**
          *  Parses a list of values separated by comma to set
@@ -92,9 +92,7 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
                 setForkEvery(1)
                 maxParallelForks = 1
 
-                filter {
-                    it.forEach { includeTestsMatching(it) }
-                }
+                filter { it.forEach { includeTestsMatching(it) } }
 
                 doLast {
                     maxParallelForks = parallelForks
@@ -108,9 +106,7 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
                 group = "verification"
                 setForkEvery(1)
 
-                filter {
-                    it.forEach { includeTestsMatching(it) }
-                }
+                filter { it.forEach { includeTestsMatching(it) } }
             }
         }
 
