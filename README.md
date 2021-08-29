@@ -14,8 +14,8 @@ the projects gradle.properties file using the following scheme:
 
 ```properties
 # List of tasks which should be run in separate JVM and sequentially
-plugins.runtestsseparatejvm.listOfTests.sequential=List<String>
+plugins.runtestsseparatejvm.listOfTests.sequential=Set<String>
 
 # List of tasks which should be run in separate JVM and in parallel
-plugins.runtestsseparatejvm.listOfTests.parallel=List<String>
+plugins.runtestsseparatejvm.listOfTests.parallel=Set<String>
 ```

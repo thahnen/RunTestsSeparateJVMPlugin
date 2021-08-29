@@ -78,12 +78,15 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
             }
         }
 
-        // 4) custom extension to store tha data
+        // 4) evaluate test sets provided
+        evaluateTestSets(sequentialTests, parallelTests)
+
+        // 5) custom extension to store tha data
         val extension = target.extensions.create<RunTestsSeparateJVMPluginExtension>(KEY_EXTENSION)
         sequentialTests?.let { extension.sequentialTests.set(it) } ?: run { extension.sequentialTests.empty() }
         parallelTests?.let { extension.parallelTests.set(it) } ?: run { extension.parallelTests.empty() }
 
-        // 5) register new task of type "Test" for jUnit tests running sequentially in separate JVM
+        // 6) register new task of type "Test" for jUnit tests running sequentially in separate JVM
         sequentialTests?.let {
             target.tasks.register<Test>(sequentialTestsTaskName) {
                 val parallelForks = maxParallelForks
@@ -100,7 +103,7 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
             }
         }
 
-        // 6) register new task of type "Test" for jUnit tests running in parallel in separate JVM
+        // 7) register new task of type "Test" for jUnit tests running in parallel in separate JVM
         parallelTests?.let {
             target.tasks.register<Test>(parallelTestsTaskName) {
                 group = "verification"
@@ -110,18 +113,15 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
             }
         }
 
-        // 7) remove sequentially running test from all other tasks of type Test
-        sequentialTests?.let {
-            target.tasks.withType(Test::class.java) {
+        // 8) remove sequentially / parallel running test from all other tasks of type Test
+        target.tasks.withType(Test::class.java) {
+            sequentialTests?.let {
                 if (this.name != sequentialTestsTaskName) {
                     filter { it.forEach { excludeTestsMatching(it) } }
                 }
             }
-        }
 
-        // 8) remove parallel running test from all other tasks of type Test
-        parallelTests?.let {
-            target.tasks.withType(Test::class.java) {
+            parallelTests?.let {
                 if (this.name != parallelTestsTaskName) {
                     filter { it.forEach { excludeTestsMatching(it) } }
                 }
@@ -169,5 +169,47 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         }
 
         return properties
+    }
+
+
+    /**
+     *  Evaluates tests provided to both tasks. No test class should be provided to both tasks ;)
+     *
+     *  @param sequentialTests set of test classes running sequentially
+     *  @param parallelTests set of test classes running in parallel
+     *  @throws TestInBothTasksException when test class(es) provided to both test tasks
+     */
+    @Throws(TestInBothTasksException::class)
+    private fun evaluateTestSets(sequentialTests: Set<String>?, parallelTests: Set<String>?) {
+        sequentialTests?.let { tests ->
+            val filtered = tests.filter { it.contains(".") || it.contains("*") }
+            if (filtered.isNotEmpty()) {
+                var message = "The following test classes provided to be run sequentially contain a package or asterisk:"
+                filtered.forEach { message += "\n - $it" }
+
+                throw TestClassMalformedException(message)
+            }
+        }
+
+        parallelTests?.let { tests ->
+            val filtered = tests.filter { it.contains(".") || it.contains("*") }
+            if (filtered.isNotEmpty()) {
+                var message = "The following test classes provided to be run in parallel contain a package or asterisk:"
+                filtered.forEach { message += "\n - $it" }
+
+                throw TestClassMalformedException(message)
+            }
+        }
+
+        multipleLet(sequentialTests, parallelTests) { (sTests, pTests) ->
+            val intersect = sTests.intersect(pTests)
+
+            if (intersect.isNotEmpty()) {
+                var message = "The following test classes provided can not be both executed sequentially and in parallel:"
+                intersect.forEach { message += "\n - $it" }
+
+                throw TestInBothTasksException(message)
+            }
+        }
     }
 }
