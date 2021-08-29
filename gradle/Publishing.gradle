@@ -1,0 +1,5 @@
+/** Forbid publishing plugin if version is not final! */
+(project.ext["plugin.version"] as String).split("\\.").each {
+    try { it as int }
+    catch (ignored) { rootProject.tasks.getByPath("publishPlugins").enabled = false }
+}

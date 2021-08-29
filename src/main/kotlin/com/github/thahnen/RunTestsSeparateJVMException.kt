@@ -28,3 +28,15 @@ open class MissingPropertiesEntryException(message: String) : RunTestsSeparateJV
  *  Exception thrown when value of necessary property entry is invalid (no content)
  */
 open class PropertiesEntryInvalidException(message: String) : RunTestsSeparateJVMException(message)
+
+
+/**
+ *  Exception thrown when test class provided in property entry contains asterisk or package which is not supported yet!
+ */
+open class TestClassMalformedException(message: String) : RunTestsSeparateJVMException(message)
+
+
+/**
+ *  Exception thrown when test class provided in property entry for both sequential / parallel testing
+ */
+open class TestInBothTasksException(message: String) : RunTestsSeparateJVMException(message)

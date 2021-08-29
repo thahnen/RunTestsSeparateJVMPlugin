@@ -19,18 +19,22 @@ plugins {
 }
 
 
-/** 2) General information regarding the plugin */
+/** 2) Apply script plugin to handle publishing */
+apply(from = "gradle/Publishing.gradle")
+
+
+/** 3) General information regarding the plugin */
 group   = project.extra["plugin.group"]!! as String
 version = project.extra["plugin.version"]!! as String
 
 
-/** 3) Dependency source configuration */
+/** 4) Dependency source configuration */
 repositories {
     mavenCentral()
 }
 
 
-/** 4) Plugin dependencies */
+/** 5) Plugin dependencies */
 dependencies {
     implementation("org.jetbrains.kotlin:kotlin-bom")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
@@ -42,7 +46,7 @@ dependencies {
 }
 
 
-/** 5) JaCoCo configuration */
+/** 6) JaCoCo configuration */
 jacoco {
     toolVersion = "0.8.7"
 }
@@ -54,7 +58,7 @@ tasks.jacocoTestReport {
 }
 
 
-/** 6) Plugin configuration */
+/** 7) Plugin configuration */
 pluginBundle {
     website = "https://github.com/thahnen/RunTestsSeparateJVMPlugin"
     vcsUrl  = "https://github.com/thahnen/RunTestsSeparateJVMPlugin.git"
@@ -62,7 +66,7 @@ pluginBundle {
 }
 
 
-/** 7) Configuration for publishing plugin to Gradle Plugin Portal */
+/** 8) Configuration for publishing plugin to Gradle Plugin Portal */
 gradlePlugin {
     plugins {
         create(project.extra["plugin.name"]!! as String) {
@@ -75,7 +79,7 @@ gradlePlugin {
 }
 
 
-/** 8) Configuration for publishing to private Maven Nexus repository */
+/** 9) Configuration for publishing to private Maven Nexus repository */
 System.getenv("PRIVATE_NEXUS_AVAILABLE")?.let {
     publishing {
         repositories {
