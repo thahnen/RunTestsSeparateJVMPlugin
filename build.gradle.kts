@@ -58,7 +58,13 @@ tasks.jacocoTestReport {
 }
 
 
-/** 7) Plugin configuration */
+/** 7) Gradle test configuration */
+tasks.withType<Test> {
+    testLogging.showStandardStreams = true
+}
+
+
+/** 8) Plugin configuration */
 pluginBundle {
     website = "https://github.com/thahnen/RunTestsSeparateJVMPlugin"
     vcsUrl  = "https://github.com/thahnen/RunTestsSeparateJVMPlugin.git"
@@ -66,7 +72,7 @@ pluginBundle {
 }
 
 
-/** 8) Configuration for publishing plugin to Gradle Plugin Portal */
+/** 9) Configuration for publishing plugin to Gradle Plugin Portal */
 gradlePlugin {
     plugins {
         create(project.extra["plugin.name"]!! as String) {
@@ -79,7 +85,7 @@ gradlePlugin {
 }
 
 
-/** 9) Configuration for publishing to private Maven Nexus repository */
+/** 10) Configuration for publishing to private Maven Nexus repository */
 System.getenv("PRIVATE_NEXUS_AVAILABLE")?.let {
     publishing {
         repositories {

@@ -9,8 +9,11 @@ tests sequentially or in parallel.
 
 ## Usage
 
+To find out how to apply this plugin to your Gradle project see the information over at the
+[Gradle Plugin Portal](https://plugins.gradle.org/plugin/com.github.thahnen.runtestsseparatejvm)!
+
 To use this plugin you need to provide names of jUnit test classes to the project. You can use environment variables or
-the projects gradle.properties file using the following scheme:
+system properties or the projects gradle.properties file using the following scheme:
 
 ```properties
 # List of tasks which should be run in separate JVM and sequentially
@@ -19,3 +22,5 @@ plugins.runtestsseparatejvm.listOfTests.sequential=Set<String>
 # List of tasks which should be run in separate JVM and in parallel
 plugins.runtestsseparatejvm.listOfTests.parallel=Set<String>
 ```
+
+You can choose to only use a configuration to run tests sequentially or in parallel or both!

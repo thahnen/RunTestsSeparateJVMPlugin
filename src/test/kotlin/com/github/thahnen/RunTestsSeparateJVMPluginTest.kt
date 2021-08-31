@@ -5,7 +5,7 @@ import java.io.IOException
 import java.util.Properties
 
 import org.junit.Assert
-import org.junit.Before
+import org.junit.BeforeClass
 import org.junit.Test
 
 import org.gradle.api.plugins.ExtraPropertiesExtension
@@ -23,34 +23,48 @@ import com.github.stefanbirkner.systemlambda.SystemLambda.withEnvironmentVariabl
  */
 open class RunTestsSeparateJVMPluginTest {
 
-    // test cases properties file
-    private val correct1ProjectPropertiesPath   = this.javaClass.classLoader.getResource("project_correct1.properties")!!
-                                                    .path.replace("%20", " ")
-    private val correct2ProjectPropertiesPath   = this.javaClass.classLoader.getResource("project_correct2.properties")!!
-                                                    .path.replace("%20", " ")
-    private val correct3ProjectPropertiesPath   = this.javaClass.classLoader.getResource("project_correct3.properties")!!
-                                                    .path.replace("%20", " ")
-    private val wrong1ProjectPropertiesPath     = this.javaClass.classLoader.getResource("project_wrong1.properties")!!
-                                                    .path.replace("%20", " ")
-    private val wrong2ProjectPropertiesPath     = this.javaClass.classLoader.getResource("project_wrong2.properties")!!
-                                                    .path.replace("%20", " ")
+    companion object {
+        // test cases properties file
+        private val correct1ProjectPropertiesPath   = this::class.java.classLoader.getResource("project_correct1.properties")!!
+                                                        .path.replace("%20", " ")
+        private val correct2ProjectPropertiesPath   = this::class.java.classLoader.getResource("project_correct2.properties")!!
+                                                        .path.replace("%20", " ")
+        private val correct3ProjectPropertiesPath   = this::class.java.classLoader.getResource("project_correct3.properties")!!
+                                                        .path.replace("%20", " ")
+        private val wrong1ProjectPropertiesPath     = this::class.java.classLoader.getResource("project_wrong1.properties")!!
+                                                        .path.replace("%20", " ")
+        private val wrong2ProjectPropertiesPath     = this::class.java.classLoader.getResource("project_wrong2.properties")!!
+                                                        .path.replace("%20", " ")
+        private val wrong3ProjectPropertiesPath     = this::class.java.classLoader.getResource("project_wrong3.properties")!!
+                                                        .path.replace("%20", " ")
+        private val wrong4ProjectPropertiesPath     = this::class.java.classLoader.getResource("project_wrong4.properties")!!
+                                                        .path.replace("%20", " ")
+        private val wrong5ProjectPropertiesPath     = this::class.java.classLoader.getResource("project_wrong5.properties")!!
+                                                        .path.replace("%20", " ")
 
-    // test cases properties
-    private val correct1Properties = Properties()
-    private val correct2Properties = Properties()
-    private val correct3Properties = Properties()
-    private val wrong1Properties = Properties()
-    private val wrong2Properties = Properties()
+        // test cases properties
+        private val correct1Properties = Properties()
+        private val correct2Properties = Properties()
+        private val correct3Properties = Properties()
+        private val wrong1Properties = Properties()
+        private val wrong2Properties = Properties()
+        private val wrong3Properties = Properties()
+        private val wrong4Properties = Properties()
+        private val wrong5Properties = Properties()
 
 
-    /** 0) Configuration to read properties once before running multiple tests using them */
-    @Throws(IOException::class)
-    @Before fun configureTestsuite() {
-        correct1Properties.load(FileInputStream(correct1ProjectPropertiesPath))
-        correct2Properties.load(FileInputStream(correct2ProjectPropertiesPath))
-        correct3Properties.load(FileInputStream(correct3ProjectPropertiesPath))
-        wrong1Properties.load(FileInputStream(wrong1ProjectPropertiesPath))
-        wrong2Properties.load(FileInputStream(wrong2ProjectPropertiesPath))
+        /** 0) Configuration to read properties once before running multiple tests using them */
+        @Throws(IOException::class)
+        @BeforeClass @JvmStatic fun configureTestsuite() {
+            correct1Properties.load(FileInputStream(correct1ProjectPropertiesPath))
+            correct2Properties.load(FileInputStream(correct2ProjectPropertiesPath))
+            correct3Properties.load(FileInputStream(correct3ProjectPropertiesPath))
+            wrong1Properties.load(FileInputStream(wrong1ProjectPropertiesPath))
+            wrong2Properties.load(FileInputStream(wrong2ProjectPropertiesPath))
+            wrong3Properties.load(FileInputStream(wrong3ProjectPropertiesPath))
+            wrong4Properties.load(FileInputStream(wrong4ProjectPropertiesPath))
+            wrong5Properties.load(FileInputStream(wrong5ProjectPropertiesPath))
+        }
     }
 
 
@@ -101,7 +115,7 @@ open class RunTestsSeparateJVMPluginTest {
             // apply Java plugin
             project.pluginManager.apply(JavaPlugin::class.java)
 
-            // project gradle.properties reference (project_correct1.properties.set can not be used directly!)
+            // project gradle.properties reference (can not be used directly!)
             val propertiesExtension = project.extensions.getByType(ExtraPropertiesExtension::class.java)
             it.keys.forEach { key ->
                 propertiesExtension[key as String] = it.getProperty(key)
@@ -121,7 +135,61 @@ open class RunTestsSeparateJVMPluginTest {
     }
 
 
-    /** 4) Tests applying the plugin (with incorrect environment variables used) */
+    /** 5) Tests applying the plugin (with malformed project properties file) */
+    @Test fun testApplyPluginWithMalformedPropertiesToProject() {
+        listOf(wrong3Properties, wrong4Properties).forEach {
+            val project = ProjectBuilder.builder().build()
+
+            // apply Java plugin
+            project.pluginManager.apply(JavaPlugin::class.java)
+
+            // project gradle.properties reference (can not be used directly!)
+            val propertiesExtension = project.extensions.getByType(ExtraPropertiesExtension::class.java)
+            it.keys.forEach { key ->
+                propertiesExtension[key as String] = it.getProperty(key)
+            }
+
+            try {
+                // try applying plugin (should fail)
+                project.pluginManager.apply(RunTestsSeparateJVMPlugin::class.java)
+            } catch (e: Exception) {
+                // assert applying did not work
+                // INFO: equal to check on InvalidUserDataException as it is based on it
+                assert(e.cause is TestClassMalformedException)
+            }
+
+            Assert.assertFalse(project.plugins.hasPlugin(RunTestsSeparateJVMPlugin::class.java))
+        }
+    }
+
+
+    /** 6) Tests applying the plugin (with project properties file, tests in both properties) */
+    @Test fun testApplyPluginWithTestsInBothPropertiesToProject() {
+        val project = ProjectBuilder.builder().build()
+
+        // apply Java plugin
+        project.pluginManager.apply(JavaPlugin::class.java)
+
+        // project gradle.properties reference (can not be used directly!)
+        val propertiesExtension = project.extensions.getByType(ExtraPropertiesExtension::class.java)
+        wrong5Properties.keys.forEach { key ->
+            propertiesExtension[key as String] = wrong5Properties.getProperty(key)
+        }
+
+        try {
+            // try applying plugin (should fail)
+            project.pluginManager.apply(RunTestsSeparateJVMPlugin::class.java)
+        } catch (e: Exception) {
+            // assert applying did not work
+            // INFO: equal to check on InvalidUserDataException as it is based on it
+            assert(e.cause is TestInBothTasksException)
+        }
+
+        Assert.assertFalse(project.plugins.hasPlugin(RunTestsSeparateJVMPlugin::class.java))
+    }
+
+
+    /** 7) Tests applying the plugin (with incorrect environment variables used) */
     @Test fun testApplyPluginWithIncorrectEnvironmentVariablesToProject() {
         listOf(wrong1Properties, wrong2Properties).forEach {
             val project = ProjectBuilder.builder().build()
@@ -151,7 +219,7 @@ open class RunTestsSeparateJVMPluginTest {
     }
 
 
-    /** 5) Tests applying the plugin (with correct project properties file) */
+    /** 8) Tests applying the plugin (with correct project properties file) */
     @Test fun testApplyPluginWithCorrectPropertiesToProject() {
         listOf(correct1Properties, correct2Properties, correct3Properties).forEach {
             val project = ProjectBuilder.builder().build()
@@ -174,7 +242,7 @@ open class RunTestsSeparateJVMPluginTest {
     }
 
 
-    /** 6) Tests applying the plugin (with environment variables used) */
+    /** 9) Tests applying the plugin (with environment variables used) */
     @Test fun testApplyPluginWithCorrectEnvironmentVariablesToProject() {
         val project = ProjectBuilder.builder().build()
 
@@ -197,7 +265,7 @@ open class RunTestsSeparateJVMPluginTest {
     }
 
 
-    /** 7) Tests applying the plugin and evaluates that the extensions set by plugin exists */
+    /** 10) Tests applying the plugin and evaluates that the extensions set by plugin exists */
     @Test fun testEvaluatePluginExtension() {
         val project = ProjectBuilder.builder().build()
 
@@ -227,10 +295,15 @@ open class RunTestsSeparateJVMPluginTest {
                 correct1Properties.getProperty(RunTestsSeparateJVMPlugin.KEY_PARALLEL)
             ), extension.parallelTests.get()
         )
+
+        // assert that extension is saved by name provided in plugin
+        val findByName = project.extensions.findByName(RunTestsSeparateJVMPlugin.KEY_EXTENSION)
+        Assert.assertNotNull(findByName)
+        Assert.assertEquals(extension, findByName!!)
     }
 
 
-    /** 8) Tests applying the plugin and evaluates that the tasks created are correct */
+    /** 11) Tests applying the plugin and evaluates that the tasks created are correct */
     @Test fun testEvaluateTasks() {
         val project = ProjectBuilder.builder().build()
 
@@ -283,7 +356,7 @@ open class RunTestsSeparateJVMPluginTest {
     }
 
 
-    /** 9) Tests applying the plugin and evaluates the standard "test" task */
+    /** 12) Tests applying the plugin and evaluates the standard "test" task */
     @Test fun testEvaluateGradleTestTask() {
         val project = ProjectBuilder.builder().build()
 
