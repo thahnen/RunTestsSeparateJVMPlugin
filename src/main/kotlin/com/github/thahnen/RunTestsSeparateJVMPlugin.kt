@@ -33,6 +33,9 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         internal val KEY_SEQUENTIAL  = "plugins.runtestsseparatejvm.listOfTests.sequential"
         internal val KEY_PARALLEL    = "plugins.runtestsseparatejvm.listOfTests.parallel"
 
+        // identifier of system property / environment variable to disable dependencies for Gradle "test" task
+        internal val KEY_DISABLEDEPENDENCIES = "plugins.runtestsseparatejvm.disableDependencies"
+
         // extension name
         internal val KEY_EXTENSION = "RunTestsSeparateJVMExtension"
 
@@ -129,9 +132,12 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         }
 
         // 9) create general Gradle "test" task dependsOn from tasks created
-        target.tasks.named("test", Test::class.java) {
-            sequentialTests?.let { this.dependsOn(sequentialTestsTaskName) }
-            parallelTests?.let { this.dependsOn(parallelTestsTaskName) }
+        //    -> only if not disabled using system property / environment variable
+        if (!getNoTestTaskDependency()) {
+            target.tasks.named("test", Test::class.java) {
+                sequentialTests?.let { this.dependsOn(sequentialTestsTaskName) }
+                parallelTests?.let { this.dependsOn(parallelTestsTaskName) }
+            }
         }
     }
 
@@ -169,6 +175,18 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         }
 
         return properties
+    }
+
+
+    /**
+     *  Tries to evaluate if system property / environment variable set to disable Gradle "test" task dependencies
+     *
+     *  @return true if found, false otherwise
+     */
+    private fun getNoTestTaskDependency() : Boolean = when {
+        System.getProperties().containsKey(KEY_DISABLEDEPENDENCIES) -> true
+        System.getenv().containsKey(KEY_DISABLEDEPENDENCIES)        -> true
+        else                                                        -> false
     }
 
 

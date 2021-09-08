@@ -12,6 +12,7 @@ import org.gradle.api.plugins.ExtraPropertiesExtension
 import org.gradle.api.plugins.JavaPlugin
 import org.gradle.testfixtures.ProjectBuilder
 
+import com.github.stefanbirkner.systemlambda.SystemLambda.restoreSystemProperties
 import com.github.stefanbirkner.systemlambda.SystemLambda.withEnvironmentVariable
 
 
@@ -388,6 +389,92 @@ open class RunTestsSeparateJVMPluginTest {
             )
         ).forEach {
             Assert.assertTrue(testTask.filter.excludePatterns.containsAll(it))
+        }
+    }
+
+
+    /** 13) Tests applying the plugin and evaluates the "test" task when dependencies disabled (system properties) */
+    @Test fun testEvaluateGradleTestTaskDisabledBySystemProperty() {
+        val project = ProjectBuilder.builder().build()
+
+        // apply Java plugin
+        project.pluginManager.apply(JavaPlugin::class.java)
+
+        // project gradle.properties reference (project_correct1.properties.set can not be used directly!)
+        val propertiesExtension = project.extensions.getByType(ExtraPropertiesExtension::class.java)
+        correct1Properties.keys.forEach { key ->
+            propertiesExtension[key as String] = correct1Properties.getProperty(key)
+        }
+
+        restoreSystemProperties {
+            System.setProperty(RunTestsSeparateJVMPlugin.KEY_DISABLEDEPENDENCIES, "Disabled :(")
+
+            // assert that system property is set correctly
+            Assert.assertEquals("Disabled :(", System.getProperty(RunTestsSeparateJVMPlugin.KEY_DISABLEDEPENDENCIES))
+
+            // apply plugin
+            project.pluginManager.apply(RunTestsSeparateJVMPlugin::class.java)
+
+            // assert that standard Gradle "test" task configured correctly
+            val testTask = project.tasks.getByName("test") as org.gradle.api.tasks.testing.Test
+
+            listOf(RunTestsSeparateJVMPlugin.sequentialTestsTaskName, RunTestsSeparateJVMPlugin.parallelTestsTaskName).forEach {
+                Assert.assertFalse(testTask.dependsOn.contains(it))
+            }
+
+            listOf(
+                RunTestsSeparateJVMPlugin.parseListByCommas(
+                    propertiesExtension[RunTestsSeparateJVMPlugin.KEY_SEQUENTIAL] as String
+                ),
+                RunTestsSeparateJVMPlugin.parseListByCommas(
+                    propertiesExtension[RunTestsSeparateJVMPlugin.KEY_PARALLEL] as String
+                )
+            ).forEach {
+                Assert.assertTrue(testTask.filter.excludePatterns.containsAll(it))
+            }
+        }
+    }
+
+
+    /** 14) Tests applying the plugin and evaluates the "test" task when dependencies disabled (environment variable) */
+    @Test fun testEvaluateGradleTestTaskDisabledByEnvironmentVariable() {
+        val project = ProjectBuilder.builder().build()
+
+        // apply Java plugin
+        project.pluginManager.apply(JavaPlugin::class.java)
+
+        // project gradle.properties reference (project_correct1.properties.set can not be used directly!)
+        val propertiesExtension = project.extensions.getByType(ExtraPropertiesExtension::class.java)
+        correct1Properties.keys.forEach { key ->
+            propertiesExtension[key as String] = correct1Properties.getProperty(key)
+        }
+
+        withEnvironmentVariable(
+            RunTestsSeparateJVMPlugin.KEY_DISABLEDEPENDENCIES, "Disabled :("
+        ).execute {
+            // assert that environment variable is set correctly
+            Assert.assertEquals("Disabled :(", System.getenv(RunTestsSeparateJVMPlugin.KEY_DISABLEDEPENDENCIES))
+
+            // apply plugin
+            project.pluginManager.apply(RunTestsSeparateJVMPlugin::class.java)
+
+            // assert that standard Gradle "test" task configured correctly
+            val testTask = project.tasks.getByName("test") as org.gradle.api.tasks.testing.Test
+
+            listOf(RunTestsSeparateJVMPlugin.sequentialTestsTaskName, RunTestsSeparateJVMPlugin.parallelTestsTaskName).forEach {
+                Assert.assertFalse(testTask.dependsOn.contains(it))
+            }
+
+            listOf(
+                RunTestsSeparateJVMPlugin.parseListByCommas(
+                    propertiesExtension[RunTestsSeparateJVMPlugin.KEY_SEQUENTIAL] as String
+                ),
+                RunTestsSeparateJVMPlugin.parseListByCommas(
+                    propertiesExtension[RunTestsSeparateJVMPlugin.KEY_PARALLEL] as String
+                )
+            ).forEach {
+                Assert.assertTrue(testTask.filter.excludePatterns.containsAll(it))
+            }
         }
     }
 }
