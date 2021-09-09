@@ -34,7 +34,7 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         internal val KEY_PARALLEL    = "plugins.runtestsseparatejvm.listOfTests.parallel"
 
         // identifier of system property / environment variable to disable dependencies for Gradle "test" task
-        internal val KEY_DISABLEDEPENDENCIES = "plugins.runtestsseparatejvm.disableDependencies"
+        internal val KEY_DISABLEDEPENDENCIES = "disableTestDependencies"
 
         // extension name
         internal val KEY_EXTENSION = "RunTestsSeparateJVMExtension"
