@@ -21,17 +21,24 @@ import org.gradle.kotlin.dsl.register
  *  in parallel or sequential.
  *
  *  Result: - target.extensions.getByType(RunTestsSeparateJVMPluginExtension::class.java) for the following properties
- *          - sequentialTests   -> set of jUnit test classes running in separate JVM in sequential order
- *          - parallelTests     -> set of jUnit test classes running in separate JVM in parallel order
+ *          - sequentialTests       -> set of jUnit test classes running in separate JVM in sequential order
+ *          - parallelTests         -> set of jUnit test classes running in separate JVM in parallel order
+ *          - inheritConfiguration  -> if configuration should be inherited from standard Gradle task named "test"
  *
  *  @author thahnen
  */
 open class RunTestsSeparateJVMPlugin : Plugin<Project> {
 
+    // internal identifiers of properties connected to this plugin
+    private val INTERNAL_SEQUENTIAL = "listOfTests.sequential"
+    private val INTERNAL_PARALLEL   = "listOfTests.parallel"
+    private val INTERNAL_INHERIT    = "inheritTestConfiguration"
+
     companion object {
         // identifiers of properties connected to this plugin
         internal val KEY_SEQUENTIAL  = "plugins.runtestsseparatejvm.listOfTests.sequential"
         internal val KEY_PARALLEL    = "plugins.runtestsseparatejvm.listOfTests.parallel"
+        internal val KEY_INHERIT     = "plugins.runtestsseparatejvm.inheritTestConfiguration"
 
         // identifier of system property / environment variable to disable dependencies for Gradle "test" task
         internal val KEY_DISABLEDEPENDENCIES = "disableTestDependencies"
@@ -63,38 +70,82 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         // 2) retrieve necessary property entries
         val properties = readProperties(target)
 
-        // 3) try to parse property entries if found
+        // 3) check if configurations should be inherited but no Gradle task named "test" found
+        //    -> This should not be possible in any way other than witchcraft!
+        //    -> Therefore this should be included even against all odds ;)
+        if (properties.containsKey(INTERNAL_INHERIT) && (properties[INTERNAL_INHERIT] as String).toBoolean()) {
+            target.tasks.findByName("test")?.let {
+                if (it !is Test) {
+                    throw TaskNamedTestNotFoundException(
+                        "A task named 'test' was found in project '${target.name}' but it is not a Gradle task of " +
+                        "type ${Test::class.java.name}! But property '$KEY_INHERIT' provided and set to true " +
+                        "which needs this task to configure the new test tasks introduced by this plugin!"
+                    )
+                }
+            } ?: run {
+                throw TaskNamedTestNotFoundException(
+                    "No task named 'test' was found in project '${target.name}' of type ${Test::class.java.name}! " +
+                    "But property '$KEY_INHERIT' provided and set to true which needs this task to configure the new " +
+                    "test tasks introduced by this plugin!"
+                )
+            }
+        }
+
+        // 4) try to parse property entries if found
         var sequentialTests: Set<String>? = null
         var parallelTests: Set<String>? = null
 
-        if (properties.containsKey("listOfTests.sequential")) {
-            sequentialTests = parseListByCommas(properties["listOfTests.sequential"] as String)
+        if (properties.containsKey(INTERNAL_SEQUENTIAL)) {
+            sequentialTests = parseListByCommas(properties[INTERNAL_SEQUENTIAL] as String)
             if (sequentialTests.isEmpty() || (sequentialTests.size == 1 && sequentialTests.first() == "")) {
                 throw PropertiesEntryInvalidException("$KEY_SEQUENTIAL provided but invalid (empty / blank)!")
             }
         }
 
-        if (properties.containsKey("listOfTests.parallel")) {
-            parallelTests = parseListByCommas(properties["listOfTests.parallel"] as String)
+        if (properties.containsKey(INTERNAL_PARALLEL)) {
+            parallelTests = parseListByCommas(properties[INTERNAL_PARALLEL] as String)
             if (parallelTests.isEmpty() || (parallelTests.size == 1 && parallelTests.first() == "")) {
                 throw PropertiesEntryInvalidException("$KEY_PARALLEL provided but invalid (empty / blank)!")
             }
         }
 
-        // 4) evaluate test sets provided
+        // 5) evaluate test sets provided
         evaluateTestSets(target, sequentialTests, parallelTests)
 
-        // 5) custom extension to store tha data
+        // 6) custom extension to store tha data
         val extension = target.extensions.create<RunTestsSeparateJVMPluginExtension>(KEY_EXTENSION)
         sequentialTests?.let { extension.sequentialTests.set(it) } ?: run { extension.sequentialTests.empty() }
         parallelTests?.let { extension.parallelTests.set(it) } ?: run { extension.parallelTests.empty() }
+        extension.inheritConfiguration.set(
+            when (properties.containsKey(INTERNAL_INHERIT)) {
+                true -> (properties[INTERNAL_INHERIT] as String).toBoolean()
+                else -> false
+            }
+        )
 
-        // 6) register new task of type "Test" for jUnit tests running sequentially in separate JVM
+        // 7) register new task of type "Test" for jUnit tests running sequentially in separate JVM
         sequentialTests?.let {
             target.tasks.register<Test>(sequentialTestsTaskName) {
-                val parallelForks = maxParallelForks
+                var parallelForks: Int?
 
-                group = "verification"
+                if (properties.containsKey(INTERNAL_INHERIT) && (properties[INTERNAL_INHERIT] as String).toBoolean()) {
+                    val test = target.tasks.getByName("test") as Test
+
+                    group           = test.group
+                    ignoreFailures  = test.ignoreFailures
+                    failFast        = test.failFast
+                    jvmArgs         = test.jvmArgs
+                    maxHeapSize     = test.maxHeapSize
+                    minHeapSize     = test.minHeapSize
+
+                    parallelForks = test.maxParallelForks
+                } else {
+                    group = "verification"
+
+                    parallelForks = maxParallelForks
+                }
+
+                description = "Run jUnit test classes in separate JVM single threaded!"
                 setForkEvery(1)
                 maxParallelForks = 1
 
@@ -106,17 +157,31 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
             }
         }
 
-        // 7) register new task of type "Test" for jUnit tests running in parallel in separate JVM
+        // 8) register new task of type "Test" for jUnit tests running in parallel in separate JVM
         parallelTests?.let {
             target.tasks.register<Test>(parallelTestsTaskName) {
-                group = "verification"
+                if (properties.containsKey(INTERNAL_INHERIT) && (properties[INTERNAL_INHERIT] as String).toBoolean()) {
+                    val test = target.tasks.getByName("test") as Test
+
+                    group               = test.group
+                    ignoreFailures      = test.ignoreFailures
+                    failFast            = test.failFast
+                    jvmArgs             = test.jvmArgs
+                    maxHeapSize         = test.maxHeapSize
+                    maxParallelForks    = test.maxParallelForks
+                    minHeapSize         = test.minHeapSize
+                } else {
+                    group = "verification"
+                }
+
+                description = "Run jUnit test classes in separate JVM in parallel!"
                 setForkEvery(1)
 
                 filter { it.forEach { includeTestsMatching(it) } }
             }
         }
 
-        // 8) remove sequentially / parallel running test from all other tasks of type Test
+        // 9) remove sequentially / parallel running test from all other tasks of type Test
         target.tasks.withType(Test::class.java) {
             sequentialTests?.let {
                 if (this.name != sequentialTestsTaskName) {
@@ -131,7 +196,7 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
             }
         }
 
-        // 9) create general Gradle "test" task dependsOn from tasks created
+        // 10) create general Gradle "test" task dependsOn from tasks created
         //    -> only if not disabled using system property / environment variable
         if (!getNoTestTaskDependency()) {
             target.tasks.named("test", Test::class.java) {
@@ -155,18 +220,24 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         val properties = Properties()
 
         when {
-            target.properties.containsKey(KEY_SEQUENTIAL)       -> properties["listOfTests.sequential"] = target.properties[KEY_SEQUENTIAL]
-            System.getProperties().containsKey(KEY_SEQUENTIAL)  -> properties["listOfTests.sequential"] = System.getProperties()[KEY_SEQUENTIAL]
-            System.getenv().containsKey(KEY_SEQUENTIAL)         -> properties["listOfTests.sequential"] = System.getenv(KEY_SEQUENTIAL)
+            target.properties.containsKey(KEY_SEQUENTIAL)       -> properties[INTERNAL_SEQUENTIAL] = target.properties[KEY_SEQUENTIAL]
+            System.getProperties().containsKey(KEY_SEQUENTIAL)  -> properties[INTERNAL_SEQUENTIAL] = System.getProperties()[KEY_SEQUENTIAL]
+            System.getenv().containsKey(KEY_SEQUENTIAL)         -> properties[INTERNAL_SEQUENTIAL] = System.getenv(KEY_SEQUENTIAL)
         }
 
         when {
-            target.properties.containsKey(KEY_PARALLEL)         -> properties["listOfTests.parallel"] = target.properties[KEY_PARALLEL]
-            System.getProperties().containsKey(KEY_PARALLEL)    -> properties["listOfTests.parallel"] = System.getProperties()[KEY_PARALLEL]
-            System.getenv().containsKey(KEY_PARALLEL)           -> properties["listOfTests.parallel"] = System.getenv(KEY_PARALLEL)
+            target.properties.containsKey(KEY_PARALLEL)         -> properties[INTERNAL_PARALLEL] = target.properties[KEY_PARALLEL]
+            System.getProperties().containsKey(KEY_PARALLEL)    -> properties[INTERNAL_PARALLEL] = System.getProperties()[KEY_PARALLEL]
+            System.getenv().containsKey(KEY_PARALLEL)           -> properties[INTERNAL_PARALLEL] = System.getenv(KEY_PARALLEL)
         }
 
-        if (properties.size == 0) {
+        when {
+            target.properties.containsKey(KEY_INHERIT)          -> properties[INTERNAL_INHERIT] = target.properties[KEY_INHERIT]
+            System.getProperties().containsKey(KEY_INHERIT)     -> properties[INTERNAL_INHERIT] = System.getProperties()[KEY_INHERIT]
+            System.getenv().containsKey(KEY_INHERIT)            -> properties[INTERNAL_INHERIT] = System.getenv(KEY_INHERIT)
+        }
+
+        if (properties.size == 0 || (properties.size == 1 && properties.containsKey(INTERNAL_INHERIT))) {
             // This should not be possible
             throw MissingPropertiesEntryException(
                 "Neither property for jUnit tests with separate JVM running sequentially ($KEY_SEQUENTIAL) found or" +
@@ -230,7 +301,8 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
             val intersect = sTests.intersect(pTests)
 
             if (intersect.isNotEmpty()) {
-                var message = "The following test classes provided can not be both executed sequentially and in parallel:"
+                var message = "The following test classes provided can not be both executed in separate JVM " +
+                                "sequentially and in parallel:"
                 intersect.forEach { message += "\n - $it" }
 
                 throw TestInBothTasksException(message)

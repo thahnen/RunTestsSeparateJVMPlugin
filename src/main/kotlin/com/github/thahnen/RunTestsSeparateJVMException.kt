@@ -19,6 +19,13 @@ open class PluginAppliedUnnecessarilyException(message: String) : RunTestsSepara
 
 
 /**
+ *  Thrown when this plugin is applied to a project which does not have a Gradle task named "test" or task is not of
+ *  type Test (necessary when inheriting configuration)!
+ */
+open class TaskNamedTestNotFoundException(message: String) : RunTestsSeparateJVMException(message)
+
+
+/**
  *  Exception thrown when no configuration provided in projects gradle.properties file
  */
 open class MissingPropertiesEntryException(message: String) : RunTestsSeparateJVMException(message)

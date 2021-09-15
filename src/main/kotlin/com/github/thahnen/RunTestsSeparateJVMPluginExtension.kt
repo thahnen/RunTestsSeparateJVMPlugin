@@ -1,5 +1,6 @@
 package com.github.thahnen
 
+import org.gradle.api.provider.Property
 import org.gradle.api.provider.SetProperty
 
 
@@ -18,4 +19,10 @@ abstract class RunTestsSeparateJVMPluginExtension {
 
     /** stores all jUnit test classes which should be run in separate JVM but executed in parallel */
     abstract val parallelTests: SetProperty<String>
+
+    /**
+     *  stores if both (or only one, depends on properties provided) new test tasks should inherit configurations from
+     *  default Gradle test task named "test"
+     */
+    abstract val inheritConfiguration: Property<Boolean>
 }
