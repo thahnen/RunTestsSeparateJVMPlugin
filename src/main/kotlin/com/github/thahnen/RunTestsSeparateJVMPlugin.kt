@@ -82,7 +82,7 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         }
 
         // 4) evaluate test sets provided
-        evaluateTestSets(sequentialTests, parallelTests)
+        evaluateTestSets(target, sequentialTests, parallelTests)
 
         // 5) custom extension to store tha data
         val extension = target.extensions.create<RunTestsSeparateJVMPluginExtension>(KEY_EXTENSION)
@@ -193,29 +193,36 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
     /**
      *  Evaluates tests provided to both tasks. No test class should be provided to both tasks ;)
      *
+     *  @param target the project which the plugin is applied to
      *  @param sequentialTests set of test classes running sequentially
      *  @param parallelTests set of test classes running in parallel
      *  @throws TestInBothTasksException when test class(es) provided to both test tasks
      */
     @Throws(TestInBothTasksException::class)
-    private fun evaluateTestSets(sequentialTests: Set<String>?, parallelTests: Set<String>?) {
+    private fun evaluateTestSets(target: Project, sequentialTests: Set<String>?, parallelTests: Set<String>?) {
         sequentialTests?.let { tests ->
             val filtered = tests.filter { it.contains(".") || it.contains("*") }
             if (filtered.isNotEmpty()) {
-                var message = "The following test classes provided to be run sequentially contain a package or asterisk:"
+                var message = "[${this@RunTestsSeparateJVMPlugin::class.simpleName}] The following test classes " +
+                                "provided to be run sequentially contain a package or asterisk. This can lead to " +
+                                "incomprehensible test results! With this message you've been warned and my job here " +
+                                "is done!"
                 filtered.forEach { message += "\n - $it" }
 
-                throw TestClassMalformedException(message)
+                target.logger.warn(message)
             }
         }
 
         parallelTests?.let { tests ->
             val filtered = tests.filter { it.contains(".") || it.contains("*") }
             if (filtered.isNotEmpty()) {
-                var message = "The following test classes provided to be run in parallel contain a package or asterisk:"
+                var message = "[${this@RunTestsSeparateJVMPlugin::class.simpleName}] The following test classes " +
+                                "provided to be run in parallel contain a package or asterisk. This can lead to " +
+                                "incomprehensible test results! With this message you've been warned and my job here " +
+                                "is done!"
                 filtered.forEach { message += "\n - $it" }
 
-                throw TestClassMalformedException(message)
+                target.logger.warn(message)
             }
         }
 
