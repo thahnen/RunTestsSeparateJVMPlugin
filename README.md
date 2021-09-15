@@ -21,6 +21,10 @@ plugins.runtestsseparatejvm.listOfTests.sequential=Set<String>
 
 # List of tasks which should be run in separate JVM and in parallel
 plugins.runtestsseparatejvm.listOfTests.parallel=Set<String>
+
+# (Optional) Inherit configuration from standard Gradle test task named "test"
+# -> This only inherits a fraction of possible configurations yet!
+plugins.runtestsseparatejvm.inheritTestConfiguration=Boolean
 ```
 
 You can choose to only use a configuration to run tests sequentially or in parallel or both!
