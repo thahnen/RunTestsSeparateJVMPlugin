@@ -11,6 +11,9 @@ import org.gradle.api.tasks.testing.Test
 
 import org.gradle.kotlin.dsl.create
 import org.gradle.kotlin.dsl.register
+import org.gradle.kotlin.dsl.retry
+
+import org.gradle.testretry.TestRetryPlugin
 
 
 /**
@@ -21,24 +24,27 @@ import org.gradle.kotlin.dsl.register
  *  in parallel or sequential.
  *
  *  Result: - target.extensions.getByType(RunTestsSeparateJVMPluginExtension::class.java) for the following properties
- *          - sequentialTests       -> set of jUnit test classes running in separate JVM in sequential order
- *          - parallelTests         -> set of jUnit test classes running in separate JVM in parallel order
- *          - inheritConfiguration  -> if configuration should be inherited from standard Gradle task named "test"
+ *          - sequentialTests               -> set of jUnit test classes running in separate JVM in sequential order
+ *          - parallelTests                 -> set of jUnit test classes running in separate JVM in parallel order
+ *          - inheritConfiguration          -> if configuration should be inherited from standard Gradle task named "test"
+ *          - inheritTestRetryConfiguration -> if configuration of "test-retry" plugin found
  *
  *  @author thahnen
  */
 open class RunTestsSeparateJVMPlugin : Plugin<Project> {
 
     // internal identifiers of properties connected to this plugin
-    private val INTERNAL_SEQUENTIAL = "listOfTests.sequential"
-    private val INTERNAL_PARALLEL   = "listOfTests.parallel"
-    private val INTERNAL_INHERIT    = "inheritTestConfiguration"
+    private val INTERNAL_SEQUENTIAL         = "listOfTests.sequential"
+    private val INTERNAL_PARALLEL           = "listOfTests.parallel"
+    private val INTERNAL_INHERIT            = "inheritTestConfiguration"
+    private val INTERNAL_INHERIT_TESTRETRY  = "inheritTestRetryConfiguration"
 
     companion object {
         // identifiers of properties connected to this plugin
-        internal val KEY_SEQUENTIAL  = "plugins.runtestsseparatejvm.listOfTests.sequential"
-        internal val KEY_PARALLEL    = "plugins.runtestsseparatejvm.listOfTests.parallel"
-        internal val KEY_INHERIT     = "plugins.runtestsseparatejvm.inheritTestConfiguration"
+        internal val KEY_SEQUENTIAL         = "plugins.runtestsseparatejvm.listOfTests.sequential"
+        internal val KEY_PARALLEL           = "plugins.runtestsseparatejvm.listOfTests.parallel"
+        internal val KEY_INHERIT            = "plugins.runtestsseparatejvm.inheritTestConfiguration"
+        internal val KEY_INHERIT_TESTRETRY  = "plugins.runtestsseparatejvm.inheritTestRetryConfiguration"
 
         // identifier of system property / environment variable to disable dependencies for Gradle "test" task
         internal val KEY_DISABLEDEPENDENCIES = "disableTestDependencies"
@@ -73,7 +79,19 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         // 2) retrieve necessary property entries
         val properties = readProperties(target)
 
-        // 3) check if configurations should be inherited but no Gradle task named "test" found
+        // 3) check if "test-retry" plugin applied to target (only then configuration will be inherited)
+        val testRetryPluginFound = target.plugins.hasPlugin(TestRetryPlugin::class.java)
+        if (!testRetryPluginFound
+            && properties.containsKey(INTERNAL_INHERIT_TESTRETRY)
+            && (properties[INTERNAL_INHERIT_TESTRETRY] as String).toBoolean()) {
+            target.logger.warn(
+                "[${this@RunTestsSeparateJVMPlugin::class.simpleName} - WARNING] '$KEY_INHERIT_TESTRETRY' provided " +
+                "and set to true but no 'test-retry' plugin applied to this project. You may remove the property " +
+                "from this project!"
+            )
+        }
+
+        // 4) check if configurations should be inherited but no Gradle task named "test" found
         //    -> This should not be possible in any way other than witchcraft!
         //    -> Therefore this should be included even against all odds ;)
         if (properties.containsKey(INTERNAL_INHERIT) && (properties[INTERNAL_INHERIT] as String).toBoolean()) {
@@ -95,7 +113,7 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
             }
         }
 
-        // 4) try to parse property entries if found
+        // 5) try to parse property entries if found
         var sequentialTests: Set<String>? = null
         var parallelTests: Set<String>? = null
 
@@ -119,10 +137,10 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
             }
         }
 
-        // 5) evaluate test sets provided
+        // 6) evaluate test sets provided
         evaluateTestSets(target, sequentialTests, parallelTests)
 
-        // 6) custom extension to store tha data
+        // 7) custom extension to store tha data
         val extension = target.extensions.create<RunTestsSeparateJVMPluginExtension>(KEY_EXTENSION)
         sequentialTests?.let { extension.sequentialTests.set(it) } ?: run { extension.sequentialTests.empty() }
         parallelTests?.let { extension.parallelTests.set(it) } ?: run { extension.parallelTests.empty() }
@@ -132,15 +150,21 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
                 else -> false
             }
         )
+        extension.inheritTestRetryConfiguration.set(
+            when (properties.containsKey(INTERNAL_INHERIT_TESTRETRY)) {
+                true -> (properties[INTERNAL_INHERIT_TESTRETRY] as String).toBoolean()
+                else -> false
+            }
+        )
 
-        // 7) register new task of type "Test" for jUnit tests running sequentially in separate JVM
+        // 8) register new task of type "Test" for jUnit tests running sequentially in separate JVM
+        val test = target.tasks.getByName("test") as Test
+
         sequentialTests?.let {
             target.tasks.register<Test>(sequentialTestsTaskName) {
                 var parallelForks: Int?
 
                 if (properties.containsKey(INTERNAL_INHERIT) && (properties[INTERNAL_INHERIT] as String).toBoolean()) {
-                    val test = target.tasks.getByName("test") as Test
-
                     group           = test.group
                     ignoreFailures  = test.ignoreFailures
                     failFast        = test.failFast
@@ -163,18 +187,26 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
 
                 filter { it.forEach { includeTestsMatching(it) } }
 
+                if (testRetryPluginFound
+                    && properties.containsKey(INTERNAL_INHERIT_TESTRETRY)
+                    && (properties[INTERNAL_INHERIT_TESTRETRY] as String).toBoolean()) {
+                    this.retry {
+                        maxRetries.set(test.retry.maxRetries.get())
+                        failOnPassedAfterRetry.set(test.retry.failOnPassedAfterRetry.get())
+                        maxFailures.set(test.retry.maxFailures.get())
+                    }
+                }
+
                 doLast {
                     maxParallelForks = parallelForks
                 }
             }
         }
 
-        // 8) register new task of type "Test" for jUnit tests running in parallel in separate JVM
+        // 9) register new task of type "Test" for jUnit tests running in parallel in separate JVM
         parallelTests?.let {
             target.tasks.register<Test>(parallelTestsTaskName) {
                 if (properties.containsKey(INTERNAL_INHERIT) && (properties[INTERNAL_INHERIT] as String).toBoolean()) {
-                    val test = target.tasks.getByName("test") as Test
-
                     group               = test.group
                     ignoreFailures      = test.ignoreFailures
                     failFast            = test.failFast
@@ -192,10 +224,20 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
                 setForkEvery(1)
 
                 filter { it.forEach { includeTestsMatching(it) } }
+
+                if (testRetryPluginFound
+                    && properties.containsKey(INTERNAL_INHERIT_TESTRETRY)
+                    && (properties[INTERNAL_INHERIT_TESTRETRY] as String).toBoolean()) {
+                    this.retry {
+                        maxRetries.set(test.retry.maxRetries.get())
+                        failOnPassedAfterRetry.set(test.retry.failOnPassedAfterRetry.get())
+                        maxFailures.set(test.retry.maxFailures.get())
+                    }
+                }
             }
         }
 
-        // 9) remove sequentially / parallel running test from all other tasks of type Test
+        // 10) remove sequentially / parallel running test from all other tasks of type Test
         target.tasks.withType(Test::class.java) {
             sequentialTests?.let {
                 if (this.name != sequentialTestsTaskName) {
@@ -210,7 +252,7 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
             }
         }
 
-        // 10) create general Gradle "test" task dependsOn from tasks created
+        // 11) create general Gradle "test" task dependsOn from tasks created
         //    -> only if not disabled using system property / environment variable
         if (!getNoTestTaskDependency()) {
             target.tasks.named("test", Test::class.java) {
@@ -234,21 +276,47 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         val properties = Properties()
 
         when {
-            target.properties.containsKey(KEY_SEQUENTIAL)       -> properties[INTERNAL_SEQUENTIAL] = target.properties[KEY_SEQUENTIAL]
-            System.getProperties().containsKey(KEY_SEQUENTIAL)  -> properties[INTERNAL_SEQUENTIAL] = System.getProperties()[KEY_SEQUENTIAL]
-            System.getenv().containsKey(KEY_SEQUENTIAL)         -> properties[INTERNAL_SEQUENTIAL] = System.getenv(KEY_SEQUENTIAL)
+            target.properties.containsKey(KEY_SEQUENTIAL)
+                -> properties[INTERNAL_SEQUENTIAL] = target.properties[KEY_SEQUENTIAL]
+
+            System.getProperties().containsKey(KEY_SEQUENTIAL)
+                -> properties[INTERNAL_SEQUENTIAL] = System.getProperties()[KEY_SEQUENTIAL]
+
+            System.getenv().containsKey(KEY_SEQUENTIAL)
+                -> properties[INTERNAL_SEQUENTIAL] = System.getenv(KEY_SEQUENTIAL)
         }
 
         when {
-            target.properties.containsKey(KEY_PARALLEL)         -> properties[INTERNAL_PARALLEL] = target.properties[KEY_PARALLEL]
-            System.getProperties().containsKey(KEY_PARALLEL)    -> properties[INTERNAL_PARALLEL] = System.getProperties()[KEY_PARALLEL]
-            System.getenv().containsKey(KEY_PARALLEL)           -> properties[INTERNAL_PARALLEL] = System.getenv(KEY_PARALLEL)
+            target.properties.containsKey(KEY_PARALLEL)
+                -> properties[INTERNAL_PARALLEL] = target.properties[KEY_PARALLEL]
+
+            System.getProperties().containsKey(KEY_PARALLEL)
+                -> properties[INTERNAL_PARALLEL] = System.getProperties()[KEY_PARALLEL]
+
+            System.getenv().containsKey(KEY_PARALLEL)
+                -> properties[INTERNAL_PARALLEL] = System.getenv(KEY_PARALLEL)
         }
 
         when {
-            target.properties.containsKey(KEY_INHERIT)          -> properties[INTERNAL_INHERIT] = target.properties[KEY_INHERIT]
-            System.getProperties().containsKey(KEY_INHERIT)     -> properties[INTERNAL_INHERIT] = System.getProperties()[KEY_INHERIT]
-            System.getenv().containsKey(KEY_INHERIT)            -> properties[INTERNAL_INHERIT] = System.getenv(KEY_INHERIT)
+            target.properties.containsKey(KEY_INHERIT)
+                -> properties[INTERNAL_INHERIT] = target.properties[KEY_INHERIT]
+
+            System.getProperties().containsKey(KEY_INHERIT)
+                -> properties[INTERNAL_INHERIT] = System.getProperties()[KEY_INHERIT]
+
+            System.getenv().containsKey(KEY_INHERIT)
+                -> properties[INTERNAL_INHERIT] = System.getenv(KEY_INHERIT)
+        }
+
+        when {
+            target.properties.containsKey(KEY_INHERIT_TESTRETRY)
+                -> properties[INTERNAL_INHERIT_TESTRETRY] = target.properties[KEY_INHERIT_TESTRETRY]
+
+            System.getProperties().containsKey(KEY_INHERIT_TESTRETRY)
+                -> properties[INTERNAL_INHERIT_TESTRETRY] = System.getProperties()[KEY_INHERIT_TESTRETRY]
+
+            System.getenv().containsKey(KEY_INHERIT_TESTRETRY)
+                -> properties[INTERNAL_INHERIT_TESTRETRY] = System.getenv(KEY_INHERIT_TESTRETRY)
         }
 
         if (properties.size == 0 || (properties.size == 1 && properties.containsKey(INTERNAL_INHERIT))) {

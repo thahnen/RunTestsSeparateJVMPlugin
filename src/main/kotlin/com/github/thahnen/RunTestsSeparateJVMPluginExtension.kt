@@ -25,4 +25,10 @@ abstract class RunTestsSeparateJVMPluginExtension {
      *  default Gradle test task named "test"
      */
     abstract val inheritConfiguration: Property<Boolean>
+
+    /**
+     *  stores if both (or only one, depends on properties provided) new test tasks should inherit configurations from
+     *  Gradle "test-retry" plugin if found in test task named "test"
+     */
+    abstract val inheritTestRetryConfiguration: Property<Boolean>
 }

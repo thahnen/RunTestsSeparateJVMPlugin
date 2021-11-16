@@ -31,6 +31,7 @@ version = project.extra["plugin.version"]!! as String
 /** 4) Dependency source configuration */
 repositories {
     mavenCentral()
+    gradlePluginPortal()
 }
 
 
@@ -38,6 +39,7 @@ repositories {
 dependencies {
     implementation("org.jetbrains.kotlin:kotlin-bom")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+    implementation("org.gradle:test-retry-gradle-plugin:1.3.1")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit")

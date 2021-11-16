@@ -23,8 +23,11 @@ plugins.runtestsseparatejvm.listOfTests.sequential=Set<String>
 plugins.runtestsseparatejvm.listOfTests.parallel=Set<String>
 
 # (Optional) Inherit configuration from standard Gradle test task named "test"
-# -> This only inherits a fraction of possible configurations yet!
+# -> This only inherits a fraction of possible configurations yet (including timeout)!
 plugins.runtestsseparatejvm.inheritTestConfiguration=Boolean
+
+# (Optional) Inherit configuration from Gradle "test-retry" plugin and its extension of task named "test" if found
+plugins.runtestsseparatejvm.inheritTestRetryConfiguration=Boolean
 ```
 
 You can choose to only use a configuration to run tests sequentially or in parallel or both!

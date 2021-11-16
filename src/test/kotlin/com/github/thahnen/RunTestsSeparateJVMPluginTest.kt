@@ -14,6 +14,9 @@ import org.gradle.api.plugins.ExtraPropertiesExtension
 import org.gradle.api.plugins.JavaPlugin
 import org.gradle.testfixtures.ProjectBuilder
 
+import org.gradle.testretry.TestRetryPlugin
+import org.gradle.testretry.TestRetryTaskExtension
+
 import com.github.stefanbirkner.systemlambda.SystemLambda.restoreSystemProperties
 import com.github.stefanbirkner.systemlambda.SystemLambda.withEnvironmentVariable
 
@@ -40,6 +43,10 @@ open class RunTestsSeparateJVMPluginTest {
                                                         .path.replace("%20", " ")
         private val correct6ProjectPropertiesPath   = this::class.java.classLoader.getResource("project_correct6.properties")!!
                                                         .path.replace("%20", " ")
+        private val correct7ProjectPropertiesPath   = this::class.java.classLoader.getResource("project_correct7.properties")!!
+                                                        .path.replace("%20", " ")
+        private val correct8ProjectPropertiesPath   = this::class.java.classLoader.getResource("project_correct8.properties")!!
+                                                        .path.replace("%20", " ")
         private val wrong1ProjectPropertiesPath     = this::class.java.classLoader.getResource("project_wrong1.properties")!!
                                                         .path.replace("%20", " ")
         private val wrong2ProjectPropertiesPath     = this::class.java.classLoader.getResource("project_wrong2.properties")!!
@@ -56,6 +63,8 @@ open class RunTestsSeparateJVMPluginTest {
         private val correct4Properties = Properties()
         private val correct5Properties = Properties()
         private val correct6Properties = Properties()
+        private val correct7Properties = Properties()
+        private val correct8Properties = Properties()
         private val wrong1Properties = Properties()
         private val wrong2Properties = Properties()
         private val wrong3Properties = Properties()
@@ -71,6 +80,8 @@ open class RunTestsSeparateJVMPluginTest {
             correct4Properties.load(FileInputStream(correct4ProjectPropertiesPath))
             correct5Properties.load(FileInputStream(correct5ProjectPropertiesPath))
             correct6Properties.load(FileInputStream(correct6ProjectPropertiesPath))
+            correct7Properties.load(FileInputStream(correct7ProjectPropertiesPath))
+            correct8Properties.load(FileInputStream(correct8ProjectPropertiesPath))
             wrong1Properties.load(FileInputStream(wrong1ProjectPropertiesPath))
             wrong2Properties.load(FileInputStream(wrong2ProjectPropertiesPath))
             wrong3Properties.load(FileInputStream(wrong3ProjectPropertiesPath))
@@ -623,5 +634,72 @@ open class RunTestsSeparateJVMPluginTest {
                 Assert.assertTrue(testTask.filter.excludePatterns.containsAll(it))
             }
         }
+    }
+
+
+    /** 18) Tests applying the plugin (with correct project properties file) but no TestRetryExtension */
+    @Test fun testApplyPluginWithoutTestRetryExtensionToProject() {
+        listOf(correct7Properties, correct8Properties).forEach {
+            val project = ProjectBuilder.builder().build()
+
+            // apply Java plugin
+            project.pluginManager.apply(JavaPlugin::class.java)
+
+            // project gradle.properties reference (project_correct7/8.properties. set can not be used directly!)
+            val propertiesExtension = project.extensions.getByType(ExtraPropertiesExtension::class.java)
+            it.keys.forEach { key ->
+                propertiesExtension[key as String] = it.getProperty(key)
+            }
+
+            // apply plugin
+            project.pluginManager.apply(RunTestsSeparateJVMPlugin::class.java)
+
+            // assert that plugin was applied to the project
+            Assert.assertTrue(project.plugins.hasPlugin(RunTestsSeparateJVMPlugin::class.java))
+        }
+    }
+
+
+    /** 19) Tests applying the plugin (with correct project properties file) and TestRetryExtension */
+    @Test fun testApplyPluginWithTestRetryExtensionToProject() {
+        val project = ProjectBuilder.builder().build()
+
+        // apply Java plugin
+        project.pluginManager.apply(JavaPlugin::class.java)
+
+        // project gradle.properties reference (project_correct7.properties.set can not be used directly!)
+        val propertiesExtension = project.extensions.getByType(ExtraPropertiesExtension::class.java)
+        correct7Properties.keys.forEach { key ->
+            propertiesExtension[key as String] = correct7Properties.getProperty(key)
+        }
+
+        // apply "test-retry" plugin
+        project.pluginManager.apply(TestRetryPlugin::class.java)
+        Assert.assertTrue(project.plugins.hasPlugin(TestRetryPlugin::class.java))
+
+        // configure standard Gradle task named "test"
+        val testTask = project.tasks.getByName("test") as org.gradle.api.tasks.testing.Test
+        val testTaskTestRetryExtension = testTask.extensions.getByType(TestRetryTaskExtension::class.java)
+        testTaskTestRetryExtension.maxRetries.set(10)
+        testTaskTestRetryExtension.failOnPassedAfterRetry.set(true)
+        testTaskTestRetryExtension.maxFailures.set(10)
+
+        // apply plugin
+        project.pluginManager.apply(RunTestsSeparateJVMPlugin::class.java)
+
+        // assert that tasks "testSeparateJVMSequentially" / "testSeparateJVMInParallel" inherited TestRetryExtension correctly
+        val testSequentially = project.tasks.getByName(RunTestsSeparateJVMPlugin.sequentialTestsTaskName) as org.gradle.api.tasks.testing.Test
+        val testInParallel = project.tasks.getByName(RunTestsSeparateJVMPlugin.parallelTestsTaskName) as org.gradle.api.tasks.testing.Test
+
+        val testSequentiallyTestRetryExtension = testSequentially.extensions.getByType(TestRetryTaskExtension::class.java)
+        val testInParallelTestRetryExtension = testInParallel.extensions.getByType(TestRetryTaskExtension::class.java)
+
+        Assert.assertEquals(testTaskTestRetryExtension.maxRetries.get(), testSequentiallyTestRetryExtension.maxRetries.get())
+        Assert.assertEquals(testTaskTestRetryExtension.failOnPassedAfterRetry.get(), testSequentiallyTestRetryExtension.failOnPassedAfterRetry.get())
+        Assert.assertEquals(testTaskTestRetryExtension.maxFailures.get(), testSequentiallyTestRetryExtension.maxFailures.get())
+
+        Assert.assertEquals(testTaskTestRetryExtension.maxRetries.get(), testInParallelTestRetryExtension.maxRetries.get())
+        Assert.assertEquals(testTaskTestRetryExtension.failOnPassedAfterRetry.get(), testInParallelTestRetryExtension.failOnPassedAfterRetry.get())
+        Assert.assertEquals(testTaskTestRetryExtension.maxFailures.get(), testInParallelTestRetryExtension.maxFailures.get())
     }
 }
