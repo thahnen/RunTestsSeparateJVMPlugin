@@ -64,7 +64,10 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
     override fun apply(target: Project) {
         // 1) check if Java plugin applied to target (necessary because check on test task)
         if (!target.plugins.hasPlugin(JavaPlugin::class.java)) {
-            throw PluginAppliedUnnecessarilyException("Plugin shouldn't be applied when Java plugin isn't used!")
+            throw PluginAppliedUnnecessarilyException(
+                "[${this@RunTestsSeparateJVMPlugin::class.simpleName}] Plugin shouldn't be applied when Java plugin " +
+                "isn't used!"
+            )
         }
 
         // 2) retrieve necessary property entries
@@ -77,16 +80,17 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
             target.tasks.findByName("test")?.let {
                 if (it !is Test) {
                     throw TaskNamedTestNotFoundException(
-                        "A task named 'test' was found in project '${target.name}' but it is not a Gradle task of " +
-                        "type ${Test::class.java.name}! But property '$KEY_INHERIT' provided and set to true " +
-                        "which needs this task to configure the new test tasks introduced by this plugin!"
+                        "[${this@RunTestsSeparateJVMPlugin::class.simpleName}] A task named 'test' was found in " +
+                        "project '${target.name}' but it is not a Gradle task of type ${Test::class.java.name}! But " +
+                        "property '$KEY_INHERIT' provided and set to true which needs this task to configure the new " +
+                        "test tasks introduced by this plugin!"
                     )
                 }
             } ?: run {
                 throw TaskNamedTestNotFoundException(
-                    "No task named 'test' was found in project '${target.name}' of type ${Test::class.java.name}! " +
-                    "But property '$KEY_INHERIT' provided and set to true which needs this task to configure the new " +
-                    "test tasks introduced by this plugin!"
+                    "[${this@RunTestsSeparateJVMPlugin::class.simpleName}] No task named 'test' was found in " +
+                    "project '${target.name}' of type ${Test::class.java.name}! But property '$KEY_INHERIT' provided " +
+                    "and set to true which needs this task to configure the new test tasks introduced by this plugin!"
                 )
             }
         }
@@ -98,14 +102,20 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         if (properties.containsKey(INTERNAL_SEQUENTIAL)) {
             sequentialTests = parseListByCommas(properties[INTERNAL_SEQUENTIAL] as String)
             if (sequentialTests.isEmpty() || (sequentialTests.size == 1 && sequentialTests.first() == "")) {
-                throw PropertiesEntryInvalidException("$KEY_SEQUENTIAL provided but invalid (empty / blank)!")
+                throw PropertiesEntryInvalidException(
+                    "[${this@RunTestsSeparateJVMPlugin::class.simpleName}] $KEY_SEQUENTIAL provided but invalid " +
+                    "(empty / blank)!"
+                )
             }
         }
 
         if (properties.containsKey(INTERNAL_PARALLEL)) {
             parallelTests = parseListByCommas(properties[INTERNAL_PARALLEL] as String)
             if (parallelTests.isEmpty() || (parallelTests.size == 1 && parallelTests.first() == "")) {
-                throw PropertiesEntryInvalidException("$KEY_PARALLEL provided but invalid (empty / blank)!")
+                throw PropertiesEntryInvalidException(
+                    "[${this@RunTestsSeparateJVMPlugin::class.simpleName}] $KEY_PARALLEL provided but invalid " +
+                    "(empty / blank)!"
+                )
             }
         }
 
@@ -137,6 +147,8 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
                     jvmArgs         = test.jvmArgs
                     maxHeapSize     = test.maxHeapSize
                     minHeapSize     = test.minHeapSize
+
+                    timeout.set(test.timeout)
 
                     parallelForks = test.maxParallelForks
                 } else {
@@ -170,6 +182,8 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
                     maxHeapSize         = test.maxHeapSize
                     maxParallelForks    = test.maxParallelForks
                     minHeapSize         = test.minHeapSize
+
+                    timeout.set(test.timeout)
                 } else {
                     group = "verification"
                 }
@@ -240,8 +254,9 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         if (properties.size == 0 || (properties.size == 1 && properties.containsKey(INTERNAL_INHERIT))) {
             // This should not be possible
             throw MissingPropertiesEntryException(
-                "Neither property for jUnit tests with separate JVM running sequentially ($KEY_SEQUENTIAL) found or" +
-                "property for jUnit tests with separate JVM running in parallel ($KEY_PARALLEL)"
+                "[${this@RunTestsSeparateJVMPlugin::class.simpleName}] Neither property for jUnit tests with " +
+                "separate JVM running sequentially ($KEY_SEQUENTIAL) found or property for jUnit tests with separate " +
+                "JVM running in parallel ($KEY_PARALLEL)!"
             )
         }
 
@@ -274,10 +289,10 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         sequentialTests?.let { tests ->
             val filtered = tests.filter { it.contains(".") || it.contains("*") }
             if (filtered.isNotEmpty()) {
-                var message = "[${this@RunTestsSeparateJVMPlugin::class.simpleName}] The following test classes " +
-                                "provided to be run sequentially contain a package or asterisk. This can lead to " +
-                                "incomprehensible test results! With this message you've been warned and my job here " +
-                                "is done!"
+                var message = "[${this@RunTestsSeparateJVMPlugin::class.simpleName} - WARNING] The following test " +
+                                "classes provided to be run sequentially contain a package or asterisk. This can " +
+                                "lead to incomprehensible test results! With this message you've been warned and my " +
+                                "job here is done!"
                 filtered.forEach { message += "\n - $it" }
 
                 target.logger.warn(message)
@@ -287,10 +302,10 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         parallelTests?.let { tests ->
             val filtered = tests.filter { it.contains(".") || it.contains("*") }
             if (filtered.isNotEmpty()) {
-                var message = "[${this@RunTestsSeparateJVMPlugin::class.simpleName}] The following test classes " +
-                                "provided to be run in parallel contain a package or asterisk. This can lead to " +
-                                "incomprehensible test results! With this message you've been warned and my job here " +
-                                "is done!"
+                var message = "[${this@RunTestsSeparateJVMPlugin::class.simpleName} - WARNING] The following test " +
+                                "classes provided to be run in parallel contain a package or asterisk. This can lead " +
+                                "to incomprehensible test results! With this message you've been warned and my job " +
+                                "here is done!"
                 filtered.forEach { message += "\n - $it" }
 
                 target.logger.warn(message)
@@ -301,8 +316,8 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
             val intersect = sTests.intersect(pTests)
 
             if (intersect.isNotEmpty()) {
-                var message = "The following test classes provided can not be both executed in separate JVM " +
-                                "sequentially and in parallel:"
+                var message = "[${this@RunTestsSeparateJVMPlugin::class.simpleName}] The following test classes " +
+                                "provided can not be both executed in separate JVM sequentially and in parallel:"
                 intersect.forEach { message += "\n - $it" }
 
                 throw TestInBothTasksException(message)

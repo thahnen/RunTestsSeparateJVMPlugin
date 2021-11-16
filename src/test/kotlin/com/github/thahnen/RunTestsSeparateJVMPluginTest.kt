@@ -3,6 +3,8 @@ package com.github.thahnen
 import java.io.FileInputStream
 import java.io.IOException
 import java.util.Properties
+import java.time.Duration
+import java.time.temporal.ChronoUnit
 
 import org.junit.Assert
 import org.junit.BeforeClass
@@ -474,6 +476,7 @@ open class RunTestsSeparateJVMPluginTest {
         testTask.maxHeapSize        = "2G"
         testTask.maxParallelForks   = 4
         testTask.minHeapSize        = "1G"
+        testTask.timeout.set(Duration.of(30, ChronoUnit.MINUTES))
 
         // apply plugin
         project.pluginManager.apply(RunTestsSeparateJVMPlugin::class.java)
@@ -488,6 +491,7 @@ open class RunTestsSeparateJVMPluginTest {
         Assert.assertEquals(testTask.jvmArgs, testSequentially.jvmArgs)
         Assert.assertEquals(testTask.maxHeapSize, testSequentially.maxHeapSize)
         Assert.assertEquals(testTask.minHeapSize, testSequentially.minHeapSize)
+        Assert.assertEquals(testTask.timeout.get(), testSequentially.timeout.get())
 
         Assert.assertEquals(testTask.group, testInParallel.group)
         Assert.assertEquals(testTask.ignoreFailures, testInParallel.ignoreFailures)
@@ -496,6 +500,7 @@ open class RunTestsSeparateJVMPluginTest {
         Assert.assertEquals(testTask.maxHeapSize, testInParallel.maxHeapSize)
         Assert.assertEquals(testTask.maxParallelForks, testInParallel.maxParallelForks)
         Assert.assertEquals(testTask.minHeapSize, testInParallel.minHeapSize)
+        Assert.assertEquals(testTask.timeout.get(), testInParallel.timeout.get())
     }
 
 
