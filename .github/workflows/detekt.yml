@@ -35,6 +35,6 @@ jobs:
 
       # 4) upload SARIF
       - name: Upload SARF file
-        uses: github/codeql-action/upload-sarf@1
+        uses: github/codeql-action/upload-sarf@v1
         with:
           sarif_file: build/reports/detekt/detekt.sarif
