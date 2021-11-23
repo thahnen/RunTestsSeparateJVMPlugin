@@ -64,6 +64,7 @@ tasks.jacocoTestReport {
 /** 7) detekt configuration */
 detekt {
     ignoreFailures = true
+    basePath = projectDir.toString()
 }
 
 
