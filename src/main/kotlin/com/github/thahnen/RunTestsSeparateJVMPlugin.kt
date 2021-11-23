@@ -33,28 +33,28 @@ import org.gradle.testretry.TestRetryPlugin
  */
 open class RunTestsSeparateJVMPlugin : Plugin<Project> {
 
-    // internal identifiers of properties connected to this plugin
-    private val INTERNAL_SEQUENTIAL         = "listOfTests.sequential"
-    private val INTERNAL_PARALLEL           = "listOfTests.parallel"
-    private val INTERNAL_INHERIT            = "inheritTestConfiguration"
-    private val INTERNAL_INHERIT_TESTRETRY  = "inheritTestRetryConfiguration"
-
     companion object {
         // identifiers of properties connected to this plugin
-        internal val KEY_SEQUENTIAL         = "plugins.runtestsseparatejvm.listOfTests.sequential"
-        internal val KEY_PARALLEL           = "plugins.runtestsseparatejvm.listOfTests.parallel"
-        internal val KEY_INHERIT            = "plugins.runtestsseparatejvm.inheritTestConfiguration"
-        internal val KEY_INHERIT_TESTRETRY  = "plugins.runtestsseparatejvm.inheritTestRetryConfiguration"
+        internal const val KEY_SEQUENTIAL           = "plugins.runtestsseparatejvm.listOfTests.sequential"
+        internal const val KEY_PARALLEL             = "plugins.runtestsseparatejvm.listOfTests.parallel"
+        internal const val KEY_INHERIT              = "plugins.runtestsseparatejvm.inheritTestConfiguration"
+        internal const val KEY_INHERIT_TESTRETRY    = "plugins.runtestsseparatejvm.inheritTestRetryConfiguration"
+
+        // internal identifiers of properties connected to this plugin
+        private const val INTERNAL_SEQUENTIAL           = "listOfTests.sequential"
+        private const val INTERNAL_PARALLEL             = "listOfTests.parallel"
+        private const val INTERNAL_INHERIT              = "inheritTestConfiguration"
+        private const val INTERNAL_INHERIT_TESTRETRY    = "inheritTestRetryConfiguration"
 
         // identifier of system property / environment variable to disable dependencies for Gradle "test" task
-        internal val KEY_DISABLEDEPENDENCIES = "disableTestDependencies"
+        internal const val KEY_DISABLEDEPENDENCIES = "disableTestDependencies"
 
         // extension name
-        internal val KEY_EXTENSION = "RunTestsSeparateJVMExtension"
+        internal const val KEY_EXTENSION = "RunTestsSeparateJVMExtension"
 
         // new task names
-        internal val sequentialTestsTaskName = "testSeparateJVMSequentially"
-        internal val parallelTestsTaskName   = "testSeparateJVMInParallel"
+        internal const val sequentialTestsTaskName  = "testSeparateJVMSequentially"
+        internal const val parallelTestsTaskName    = "testSeparateJVMInParallel"
 
         /**
          *  Parses a list of values separated by comma to set
