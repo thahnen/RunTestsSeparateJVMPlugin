@@ -12,6 +12,7 @@ import org.gradle.api.provider.SetProperty
  *
  *  @author thahnen
  */
+@Suppress("UnnecessaryAbstractClass")
 abstract class RunTestsSeparateJVMPluginExtension {
 
     /** stores all jUnit test classes which should be run in separate JVM but executed sequentially */

@@ -1,3 +1,4 @@
+@file:Suppress("MaxLineLength")
 package com.github.thahnen
 
 import java.io.FileInputStream

@@ -26,8 +26,8 @@ import org.gradle.testretry.TestRetryPlugin
  *  Result: - target.extensions.getByType(RunTestsSeparateJVMPluginExtension::class.java) for the following properties
  *          - sequentialTests               -> set of jUnit test classes running in separate JVM in sequential order
  *          - parallelTests                 -> set of jUnit test classes running in separate JVM in parallel order
- *          - inheritConfiguration          -> if configuration should be inherited from standard Gradle task named "test"
- *          - inheritTestRetryConfiguration -> if configuration of "test-retry" plugin found
+ *          - inheritConfiguration          -> if config should be inherited from standard Gradle task named "test"
+ *          - inheritTestRetryConfiguration -> if config of "test-retry" plugin found
  *
  *  @author thahnen
  */
