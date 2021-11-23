@@ -1,4 +1,3 @@
-@file:Suppress("MaxLineLength")
 package com.github.thahnen
 
 import java.io.FileInputStream
@@ -32,30 +31,18 @@ open class RunTestsSeparateJVMPluginTest {
 
     companion object {
         // test cases properties file
-        private val correct1ProjectPropertiesPath   = this::class.java.classLoader.getResource("project_correct1.properties")!!
-                                                        .path.replace("%20", " ")
-        private val correct2ProjectPropertiesPath   = this::class.java.classLoader.getResource("project_correct2.properties")!!
-                                                        .path.replace("%20", " ")
-        private val correct3ProjectPropertiesPath   = this::class.java.classLoader.getResource("project_correct3.properties")!!
-                                                        .path.replace("%20", " ")
-        private val correct4ProjectPropertiesPath   = this::class.java.classLoader.getResource("project_correct4.properties")!!
-                                                        .path.replace("%20", " ")
-        private val correct5ProjectPropertiesPath   = this::class.java.classLoader.getResource("project_correct5.properties")!!
-                                                        .path.replace("%20", " ")
-        private val correct6ProjectPropertiesPath   = this::class.java.classLoader.getResource("project_correct6.properties")!!
-                                                        .path.replace("%20", " ")
-        private val correct7ProjectPropertiesPath   = this::class.java.classLoader.getResource("project_correct7.properties")!!
-                                                        .path.replace("%20", " ")
-        private val correct8ProjectPropertiesPath   = this::class.java.classLoader.getResource("project_correct8.properties")!!
-                                                        .path.replace("%20", " ")
-        private val wrong1ProjectPropertiesPath     = this::class.java.classLoader.getResource("project_wrong1.properties")!!
-                                                        .path.replace("%20", " ")
-        private val wrong2ProjectPropertiesPath     = this::class.java.classLoader.getResource("project_wrong2.properties")!!
-                                                        .path.replace("%20", " ")
-        private val wrong3ProjectPropertiesPath     = this::class.java.classLoader.getResource("project_wrong3.properties")!!
-                                                        .path.replace("%20", " ")
-        private val wrong4ProjectPropertiesPath     = this::class.java.classLoader.getResource("project_wrong4.properties")!!
-                                                        .path.replace("%20", " ")
+        private val correct1ProjectPropertiesPath   = resource("correct/project1.properties")
+        private val correct2ProjectPropertiesPath   = resource("correct/project2.properties")
+        private val correct3ProjectPropertiesPath   = resource("correct/project3.properties")
+        private val correct4ProjectPropertiesPath   = resource("correct/project4.properties")
+        private val correct5ProjectPropertiesPath   = resource("correct/project5.properties")
+        private val correct6ProjectPropertiesPath   = resource("correct/project6.properties")
+        private val correct7ProjectPropertiesPath   = resource("correct/project7.properties")
+        private val correct8ProjectPropertiesPath   = resource("correct/project8.properties")
+        private val wrong1ProjectPropertiesPath     = resource("wrong/project1.properties")
+        private val wrong2ProjectPropertiesPath     = resource("wrong/project2.properties")
+        private val wrong3ProjectPropertiesPath     = resource("wrong/project3.properties")
+        private val wrong4ProjectPropertiesPath     = resource("wrong/project4.properties")
 
         // test cases properties
         private val correct1Properties = Properties()
@@ -70,6 +57,12 @@ open class RunTestsSeparateJVMPluginTest {
         private val wrong2Properties = Properties()
         private val wrong3Properties = Properties()
         private val wrong4Properties = Properties()
+
+
+        /** internally used simplified resource loader */
+        private fun resource(path: String): String {
+            return this::class.java.classLoader.getResource(path)!!.path.replace("%20", " ")
+        }
 
 
         /** 0) Configuration to read properties once before running multiple tests using them */
@@ -278,7 +271,7 @@ open class RunTestsSeparateJVMPluginTest {
             // apply Java plugin
             project.pluginManager.apply(JavaPlugin::class.java)
 
-            // project gradle.properties reference (project_correct1.properties.set can not be used directly!)
+            // project gradle.properties reference (correct/project.properties.set can not be used directly!)
             val propertiesExtension = project.extensions.getByType(ExtraPropertiesExtension::class.java)
             it.keys.forEach { key ->
                 propertiesExtension[key as String] = it.getProperty(key)
@@ -324,7 +317,7 @@ open class RunTestsSeparateJVMPluginTest {
         project.pluginManager.apply(JavaPlugin::class.java)
 
         restoreSystemProperties {
-            // project gradle.properties reference (project_correct1.properties.set can not be used directly!)
+            // project gradle.properties reference (correct/project6.properties.set can not be used directly!)
             correct6Properties.keys.forEach { key ->
                 System.setProperty(key as String, correct6Properties.getProperty(key))
 
@@ -348,7 +341,7 @@ open class RunTestsSeparateJVMPluginTest {
             // apply Java plugin
             project.pluginManager.apply(JavaPlugin::class.java)
 
-            // project gradle.properties reference (project_correct1.properties.set can not be used directly!)
+            // project gradle.properties reference (correct/project.properties.set can not be used directly!)
             val propertiesExtension = project.extensions.getByType(ExtraPropertiesExtension::class.java)
             it.keys.forEach { key ->
                 propertiesExtension[key as String] = it.getProperty(key)
@@ -382,7 +375,7 @@ open class RunTestsSeparateJVMPluginTest {
         // apply Java plugin
         project.pluginManager.apply(JavaPlugin::class.java)
 
-        // project gradle.properties reference (project_correct1.properties.set can not be used directly!)
+        // project gradle.properties reference (correct/project1.properties.set can not be used directly!)
         val propertiesExtension = project.extensions.getByType(ExtraPropertiesExtension::class.java)
         correct1Properties.keys.forEach { key ->
             propertiesExtension[key as String] = correct1Properties.getProperty(key)
@@ -420,7 +413,7 @@ open class RunTestsSeparateJVMPluginTest {
         // apply Java plugin
         project.pluginManager.apply(JavaPlugin::class.java)
 
-        // project gradle.properties reference (project_correct1.properties.set can not be used directly!)
+        // project gradle.properties reference (correct/project1.properties.set can not be used directly!)
         val propertiesExtension = project.extensions.getByType(ExtraPropertiesExtension::class.java)
         correct1Properties.keys.forEach { key ->
             propertiesExtension[key as String] = correct1Properties.getProperty(key)
@@ -430,8 +423,13 @@ open class RunTestsSeparateJVMPluginTest {
         project.pluginManager.apply(RunTestsSeparateJVMPlugin::class.java)
 
         // assert that tasks "testSeparateJVMSequentially" / "testSeparateJVMInParallel" added correctly
-        val testSequentially = project.tasks.getByName(RunTestsSeparateJVMPlugin.sequentialTestsTaskName) as org.gradle.api.tasks.testing.Test
-        val testInParallel = project.tasks.getByName(RunTestsSeparateJVMPlugin.parallelTestsTaskName) as org.gradle.api.tasks.testing.Test
+        val testSequentially = project.tasks.getByName(
+            RunTestsSeparateJVMPlugin.sequentialTestsTaskName
+        ) as org.gradle.api.tasks.testing.Test
+
+        val testInParallel = project.tasks.getByName(
+            RunTestsSeparateJVMPlugin.parallelTestsTaskName
+        ) as org.gradle.api.tasks.testing.Test
 
         Assert.assertEquals("verification", testSequentially.group)
         Assert.assertEquals(1, testSequentially.maxParallelForks)
@@ -473,7 +471,7 @@ open class RunTestsSeparateJVMPluginTest {
         // apply Java plugin
         project.pluginManager.apply(JavaPlugin::class.java)
 
-        // project gradle.properties reference (project_correct1.properties.set can not be used directly!)
+        // project gradle.properties reference (correct/project1.properties.set can not be used directly!)
         val propertiesExtension = project.extensions.getByType(ExtraPropertiesExtension::class.java)
         correct6Properties.keys.forEach { key ->
             propertiesExtension[key as String] = correct6Properties.getProperty(key)
@@ -494,8 +492,13 @@ open class RunTestsSeparateJVMPluginTest {
         project.pluginManager.apply(RunTestsSeparateJVMPlugin::class.java)
 
         // assert that tasks "testSeparateJVMSequentially" / "testSeparateJVMInParallel" added correctly
-        val testSequentially = project.tasks.getByName(RunTestsSeparateJVMPlugin.sequentialTestsTaskName) as org.gradle.api.tasks.testing.Test
-        val testInParallel = project.tasks.getByName(RunTestsSeparateJVMPlugin.parallelTestsTaskName) as org.gradle.api.tasks.testing.Test
+        val testSequentially = project.tasks.getByName(
+            RunTestsSeparateJVMPlugin.sequentialTestsTaskName
+        ) as org.gradle.api.tasks.testing.Test
+
+        val testInParallel = project.tasks.getByName(
+            RunTestsSeparateJVMPlugin.parallelTestsTaskName
+        ) as org.gradle.api.tasks.testing.Test
 
         Assert.assertEquals(testTask.group, testSequentially.group)
         Assert.assertEquals(testTask.ignoreFailures, testSequentially.ignoreFailures)
@@ -523,7 +526,7 @@ open class RunTestsSeparateJVMPluginTest {
         // apply Java plugin
         project.pluginManager.apply(JavaPlugin::class.java)
 
-        // project gradle.properties reference (project_correct1.properties.set can not be used directly!)
+        // project gradle.properties reference (correct/project1.properties.set can not be used directly!)
         val propertiesExtension = project.extensions.getByType(ExtraPropertiesExtension::class.java)
         correct1Properties.keys.forEach { key ->
             propertiesExtension[key as String] = correct1Properties.getProperty(key)
@@ -535,7 +538,10 @@ open class RunTestsSeparateJVMPluginTest {
         // assert that standard Gradle "test" task configured correctly
         val testTask = project.tasks.getByName("test") as org.gradle.api.tasks.testing.Test
 
-        listOf(RunTestsSeparateJVMPlugin.sequentialTestsTaskName, RunTestsSeparateJVMPlugin.parallelTestsTaskName).forEach {
+        listOf(
+            RunTestsSeparateJVMPlugin.sequentialTestsTaskName,
+            RunTestsSeparateJVMPlugin.parallelTestsTaskName
+        ).forEach {
             Assert.assertTrue(testTask.dependsOn.contains(it))
         }
 
@@ -559,7 +565,7 @@ open class RunTestsSeparateJVMPluginTest {
         // apply Java plugin
         project.pluginManager.apply(JavaPlugin::class.java)
 
-        // project gradle.properties reference (project_correct1.properties.set can not be used directly!)
+        // project gradle.properties reference (correct/project1.properties.set can not be used directly!)
         val propertiesExtension = project.extensions.getByType(ExtraPropertiesExtension::class.java)
         correct1Properties.keys.forEach { key ->
             propertiesExtension[key as String] = correct1Properties.getProperty(key)
@@ -577,7 +583,10 @@ open class RunTestsSeparateJVMPluginTest {
             // assert that standard Gradle "test" task configured correctly
             val testTask = project.tasks.getByName("test") as org.gradle.api.tasks.testing.Test
 
-            listOf(RunTestsSeparateJVMPlugin.sequentialTestsTaskName, RunTestsSeparateJVMPlugin.parallelTestsTaskName).forEach {
+            listOf(
+                RunTestsSeparateJVMPlugin.sequentialTestsTaskName,
+                RunTestsSeparateJVMPlugin.parallelTestsTaskName
+            ).forEach {
                 Assert.assertFalse(testTask.dependsOn.contains(it))
             }
 
@@ -602,7 +611,7 @@ open class RunTestsSeparateJVMPluginTest {
         // apply Java plugin
         project.pluginManager.apply(JavaPlugin::class.java)
 
-        // project gradle.properties reference (project_correct1.properties.set can not be used directly!)
+        // project gradle.properties reference (correct/project1.properties.set can not be used directly!)
         val propertiesExtension = project.extensions.getByType(ExtraPropertiesExtension::class.java)
         correct1Properties.keys.forEach { key ->
             propertiesExtension[key as String] = correct1Properties.getProperty(key)
@@ -620,7 +629,10 @@ open class RunTestsSeparateJVMPluginTest {
             // assert that standard Gradle "test" task configured correctly
             val testTask = project.tasks.getByName("test") as org.gradle.api.tasks.testing.Test
 
-            listOf(RunTestsSeparateJVMPlugin.sequentialTestsTaskName, RunTestsSeparateJVMPlugin.parallelTestsTaskName).forEach {
+            listOf(
+                RunTestsSeparateJVMPlugin.sequentialTestsTaskName,
+                RunTestsSeparateJVMPlugin.parallelTestsTaskName
+            ).forEach {
                 Assert.assertFalse(testTask.dependsOn.contains(it))
             }
 
@@ -668,7 +680,7 @@ open class RunTestsSeparateJVMPluginTest {
         // apply Java plugin
         project.pluginManager.apply(JavaPlugin::class.java)
 
-        // project gradle.properties reference (project_correct7.properties.set can not be used directly!)
+        // project gradle.properties reference (correct/project7.properties.set can not be used directly!)
         val propertiesExtension = project.extensions.getByType(ExtraPropertiesExtension::class.java)
         correct7Properties.keys.forEach { key ->
             propertiesExtension[key as String] = correct7Properties.getProperty(key)
@@ -688,19 +700,41 @@ open class RunTestsSeparateJVMPluginTest {
         // apply plugin
         project.pluginManager.apply(RunTestsSeparateJVMPlugin::class.java)
 
-        // assert that tasks "testSeparateJVMSequentially" / "testSeparateJVMInParallel" inherited TestRetryExtension correctly
-        val testSequentially = project.tasks.getByName(RunTestsSeparateJVMPlugin.sequentialTestsTaskName) as org.gradle.api.tasks.testing.Test
-        val testInParallel = project.tasks.getByName(RunTestsSeparateJVMPlugin.parallelTestsTaskName) as org.gradle.api.tasks.testing.Test
+        // assert that "testSeparateJVMSequentially"/"testSeparateJVMInParallel" inherited TestRetryExtension correctly
+        val testSequentially = project.tasks.getByName(
+            RunTestsSeparateJVMPlugin.sequentialTestsTaskName
+        ) as org.gradle.api.tasks.testing.Test
+        val testSequentiallyRetryExtension = testSequentially.extensions.getByType(TestRetryTaskExtension::class.java)
 
-        val testSequentiallyTestRetryExtension = testSequentially.extensions.getByType(TestRetryTaskExtension::class.java)
-        val testInParallelTestRetryExtension = testInParallel.extensions.getByType(TestRetryTaskExtension::class.java)
+        val testInParallel = project.tasks.getByName(
+            RunTestsSeparateJVMPlugin.parallelTestsTaskName
+        ) as org.gradle.api.tasks.testing.Test
+        val testInParallelRetryExtension = testInParallel.extensions.getByType(TestRetryTaskExtension::class.java)
 
-        Assert.assertEquals(testTaskTestRetryExtension.maxRetries.get(), testSequentiallyTestRetryExtension.maxRetries.get())
-        Assert.assertEquals(testTaskTestRetryExtension.failOnPassedAfterRetry.get(), testSequentiallyTestRetryExtension.failOnPassedAfterRetry.get())
-        Assert.assertEquals(testTaskTestRetryExtension.maxFailures.get(), testSequentiallyTestRetryExtension.maxFailures.get())
+        Assert.assertEquals(
+            testTaskTestRetryExtension.maxRetries.get(),
+            testSequentiallyRetryExtension.maxRetries.get()
+        )
+        Assert.assertEquals(
+            testTaskTestRetryExtension.failOnPassedAfterRetry.get(),
+            testSequentiallyRetryExtension.failOnPassedAfterRetry.get()
+        )
+        Assert.assertEquals(
+            testTaskTestRetryExtension.maxFailures.get(),
+            testSequentiallyRetryExtension.maxFailures.get()
+        )
 
-        Assert.assertEquals(testTaskTestRetryExtension.maxRetries.get(), testInParallelTestRetryExtension.maxRetries.get())
-        Assert.assertEquals(testTaskTestRetryExtension.failOnPassedAfterRetry.get(), testInParallelTestRetryExtension.failOnPassedAfterRetry.get())
-        Assert.assertEquals(testTaskTestRetryExtension.maxFailures.get(), testInParallelTestRetryExtension.maxFailures.get())
+        Assert.assertEquals(
+            testTaskTestRetryExtension.maxRetries.get(),
+            testInParallelRetryExtension.maxRetries.get()
+        )
+        Assert.assertEquals(
+            testTaskTestRetryExtension.failOnPassedAfterRetry.get(),
+            testInParallelRetryExtension.failOnPassedAfterRetry.get()
+        )
+        Assert.assertEquals(
+            testTaskTestRetryExtension.maxFailures.get(),
+            testInParallelRetryExtension.maxFailures.get()
+        )
     }
 }

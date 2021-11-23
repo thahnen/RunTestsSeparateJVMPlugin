@@ -56,6 +56,7 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         internal const val sequentialTestsTaskName  = "testSeparateJVMSequentially"
         internal const val parallelTestsTaskName    = "testSeparateJVMInParallel"
 
+
         /**
          *  Parses a list of values separated by comma to set
          *
@@ -275,49 +276,10 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
     private fun readProperties(target: Project) : Properties {
         val properties = Properties()
 
-        when {
-            target.properties.containsKey(KEY_SEQUENTIAL)
-                -> properties[INTERNAL_SEQUENTIAL] = target.properties[KEY_SEQUENTIAL]
-
-            System.getProperties().containsKey(KEY_SEQUENTIAL)
-                -> properties[INTERNAL_SEQUENTIAL] = System.getProperties()[KEY_SEQUENTIAL]
-
-            System.getenv().containsKey(KEY_SEQUENTIAL)
-                -> properties[INTERNAL_SEQUENTIAL] = System.getenv(KEY_SEQUENTIAL)
-        }
-
-        when {
-            target.properties.containsKey(KEY_PARALLEL)
-                -> properties[INTERNAL_PARALLEL] = target.properties[KEY_PARALLEL]
-
-            System.getProperties().containsKey(KEY_PARALLEL)
-                -> properties[INTERNAL_PARALLEL] = System.getProperties()[KEY_PARALLEL]
-
-            System.getenv().containsKey(KEY_PARALLEL)
-                -> properties[INTERNAL_PARALLEL] = System.getenv(KEY_PARALLEL)
-        }
-
-        when {
-            target.properties.containsKey(KEY_INHERIT)
-                -> properties[INTERNAL_INHERIT] = target.properties[KEY_INHERIT]
-
-            System.getProperties().containsKey(KEY_INHERIT)
-                -> properties[INTERNAL_INHERIT] = System.getProperties()[KEY_INHERIT]
-
-            System.getenv().containsKey(KEY_INHERIT)
-                -> properties[INTERNAL_INHERIT] = System.getenv(KEY_INHERIT)
-        }
-
-        when {
-            target.properties.containsKey(KEY_INHERIT_TESTRETRY)
-                -> properties[INTERNAL_INHERIT_TESTRETRY] = target.properties[KEY_INHERIT_TESTRETRY]
-
-            System.getProperties().containsKey(KEY_INHERIT_TESTRETRY)
-                -> properties[INTERNAL_INHERIT_TESTRETRY] = System.getProperties()[KEY_INHERIT_TESTRETRY]
-
-            System.getenv().containsKey(KEY_INHERIT_TESTRETRY)
-                -> properties[INTERNAL_INHERIT_TESTRETRY] = System.getenv(KEY_INHERIT_TESTRETRY)
-        }
+        handlePropertyProjectSystemPropSystemEnv(target, properties, KEY_SEQUENTIAL, INTERNAL_SEQUENTIAL)
+        handlePropertyProjectSystemPropSystemEnv(target, properties, KEY_PARALLEL, INTERNAL_PARALLEL)
+        handlePropertyProjectSystemPropSystemEnv(target, properties, KEY_INHERIT, INTERNAL_INHERIT)
+        handlePropertyProjectSystemPropSystemEnv(target, properties, KEY_INHERIT_TESTRETRY, INTERNAL_INHERIT_TESTRETRY)
 
         if (properties.size == 0 || (properties.size == 1 && properties.containsKey(INTERNAL_INHERIT))) {
             // This should not be possible
@@ -329,6 +291,30 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         }
 
         return properties
+    }
+
+
+    /**
+     *  Try to read property value in order: project gradle.properties, system properties, system environment variable
+     *  and store it using different property key
+     *
+     *  @param target the project which the plugin is applied to
+     *  @param properties properties to store value to using localPropertyName
+     *  @param globalPropertyName property key used to get value
+     *  @param localPropertyName property key used to store
+     */
+    private fun handlePropertyProjectSystemPropSystemEnv(target: Project, properties: Properties,
+                                                         globalPropertyName: String, localPropertyName: String) {
+        when {
+            target.properties.containsKey(globalPropertyName)
+                -> properties[localPropertyName] = target.properties[globalPropertyName]
+
+            System.getProperties().containsKey(globalPropertyName)
+                -> properties[localPropertyName] = System.getProperties()[globalPropertyName]
+
+            System.getenv().containsKey(globalPropertyName)
+                -> properties[localPropertyName] = System.getenv(globalPropertyName)
+        }
     }
 
 

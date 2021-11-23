@@ -1,4 +1,4 @@
-# RunTestsSeperateJVMPlugin
+# RunTestsSeparateJVMPlugin
 
 ![example workflow](https://github.com/thahnen/RunTestsSeperateJVMPlugin/actions/workflows/gradle.yml/badge.svg)
 ![example workflow](https://github.com/thahnen/RunTestsSeperateJVMPlugin/actions/workflows/gradle_validation.yml/badge.svg)
