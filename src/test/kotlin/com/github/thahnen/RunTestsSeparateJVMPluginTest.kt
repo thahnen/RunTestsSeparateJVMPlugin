@@ -2,9 +2,9 @@ package com.github.thahnen
 
 import java.io.FileInputStream
 import java.io.IOException
-import java.util.Properties
 import java.time.Duration
 import java.time.temporal.ChronoUnit
+import java.util.Properties
 
 import org.junit.Assert
 import org.junit.BeforeClass
@@ -39,10 +39,14 @@ open class RunTestsSeparateJVMPluginTest {
         private val correct6ProjectPropertiesPath   = resource("correct/project6.properties")
         private val correct7ProjectPropertiesPath   = resource("correct/project7.properties")
         private val correct8ProjectPropertiesPath   = resource("correct/project8.properties")
+        private val correct9ProjectPropertiesPath   = resource("correct/project9.properties")
+        private val correct10ProjectPropertiesPath   = resource("correct/project10.properties")
         private val wrong1ProjectPropertiesPath     = resource("wrong/project1.properties")
         private val wrong2ProjectPropertiesPath     = resource("wrong/project2.properties")
         private val wrong3ProjectPropertiesPath     = resource("wrong/project3.properties")
         private val wrong4ProjectPropertiesPath     = resource("wrong/project4.properties")
+        private val wrong5ProjectPropertiesPath     = resource("wrong/project5.properties")
+        private val wrong6ProjectPropertiesPath     = resource("wrong/project6.properties")
 
         // test cases properties
         private val correct1Properties = Properties()
@@ -53,10 +57,14 @@ open class RunTestsSeparateJVMPluginTest {
         private val correct6Properties = Properties()
         private val correct7Properties = Properties()
         private val correct8Properties = Properties()
+        private val correct9Properties = Properties()
+        private val correct10Properties = Properties()
         private val wrong1Properties = Properties()
         private val wrong2Properties = Properties()
         private val wrong3Properties = Properties()
         private val wrong4Properties = Properties()
+        private val wrong5Properties = Properties()
+        private val wrong6Properties = Properties()
 
 
         /** internally used simplified resource loader */
@@ -76,10 +84,14 @@ open class RunTestsSeparateJVMPluginTest {
             correct6Properties.load(FileInputStream(correct6ProjectPropertiesPath))
             correct7Properties.load(FileInputStream(correct7ProjectPropertiesPath))
             correct8Properties.load(FileInputStream(correct8ProjectPropertiesPath))
+            correct9Properties.load(FileInputStream(correct9ProjectPropertiesPath))
+            correct10Properties.load(FileInputStream(correct10ProjectPropertiesPath))
             wrong1Properties.load(FileInputStream(wrong1ProjectPropertiesPath))
             wrong2Properties.load(FileInputStream(wrong2ProjectPropertiesPath))
             wrong3Properties.load(FileInputStream(wrong3ProjectPropertiesPath))
             wrong4Properties.load(FileInputStream(wrong4ProjectPropertiesPath))
+            wrong5Properties.load(FileInputStream(wrong5ProjectPropertiesPath))
+            wrong6Properties.load(FileInputStream(wrong6ProjectPropertiesPath))
         }
     }
 
@@ -94,7 +106,7 @@ open class RunTestsSeparateJVMPluginTest {
         } catch (e: Exception) {
             // assert applying did not work
             // INFO: equal to check on InvalidUserDataException as it is based on it
-            assert(e.cause is PluginAppliedUnnecessarilyException)
+            Assert.assertTrue(e.cause is PluginAppliedUnnecessarilyException)
         }
 
         Assert.assertFalse(project.plugins.hasPlugin(RunTestsSeparateJVMPlugin::class.java))
@@ -116,7 +128,7 @@ open class RunTestsSeparateJVMPluginTest {
         } catch (e: Exception) {
             // assert applying did not work
             // INFO: equal to check on InvalidUserDataException as it is based on it
-            assert(e.cause is MissingPropertiesEntryException)
+            Assert.assertTrue(e.cause is MissingPropertiesEntryException)
         }
 
         Assert.assertFalse(project.plugins.hasPlugin(RunTestsSeparateJVMPlugin::class.java))
@@ -143,7 +155,7 @@ open class RunTestsSeparateJVMPluginTest {
             } catch (e: Exception) {
                 // assert applying did not work
                 // INFO: equal to check on InvalidUserDataException as it is based on it
-                assert(e.cause is PropertiesEntryInvalidException)
+                Assert.assertTrue(e.cause is PropertiesEntryInvalidException)
             }
 
             Assert.assertFalse(project.plugins.hasPlugin(RunTestsSeparateJVMPlugin::class.java))
@@ -170,7 +182,7 @@ open class RunTestsSeparateJVMPluginTest {
         } catch (e: Exception) {
             // assert applying did not work
             // INFO: equal to check on InvalidUserDataException as it is based on it
-            assert(e.cause is MissingPropertiesEntryException)
+            Assert.assertTrue(e.cause is MissingPropertiesEntryException)
         }
 
         Assert.assertFalse(project.plugins.hasPlugin(RunTestsSeparateJVMPlugin::class.java))
@@ -199,7 +211,7 @@ open class RunTestsSeparateJVMPluginTest {
             } catch (e: Exception) {
                 // assert applying did not work
                 // INFO: equal to check on InvalidUserDataException as it is based on it
-                assert(e.cause is MissingPropertiesEntryException)
+                Assert.assertTrue(e.cause is MissingPropertiesEntryException)
             }
 
             Assert.assertFalse(project.plugins.hasPlugin(RunTestsSeparateJVMPlugin::class.java))
@@ -226,7 +238,7 @@ open class RunTestsSeparateJVMPluginTest {
         } catch (e: Exception) {
             // assert applying did not work
             // INFO: equal to check on InvalidUserDataException as it is based on it
-            assert(e.cause is TestInBothTasksException)
+            Assert.assertTrue(e.cause is TestInBothTasksException)
         }
 
         Assert.assertFalse(project.plugins.hasPlugin(RunTestsSeparateJVMPlugin::class.java))
@@ -254,7 +266,7 @@ open class RunTestsSeparateJVMPluginTest {
                 } catch (e: Exception) {
                     // assert applying did not work
                     // INFO: equal to check on InvalidUserDataException as it is based on it
-                    assert(e.cause is PropertiesEntryInvalidException)
+                    Assert.assertTrue(e.cause is PropertiesEntryInvalidException)
                 }
 
                 Assert.assertFalse(project.plugins.hasPlugin(RunTestsSeparateJVMPlugin::class.java))
@@ -736,5 +748,86 @@ open class RunTestsSeparateJVMPluginTest {
             testTaskTestRetryExtension.maxFailures.get(),
             testInParallelRetryExtension.maxFailures.get()
         )
+    }
+
+
+    /** 20) Tests applying the plugin with explicit timeout */
+    @Test fun testApplyPluginWithExplicitTimeout() {
+        listOf(correct9Properties, correct10Properties).forEach {
+            val project = ProjectBuilder.builder().build()
+
+            // apply Java plugin
+            project.pluginManager.apply(JavaPlugin::class.java)
+
+            // project gradle.properties reference (correct/project.properties.set can not be used directly!)
+            val propertiesExtension = project.extensions.getByType(ExtraPropertiesExtension::class.java)
+            it.keys.forEach { key ->
+                propertiesExtension[key as String] = it.getProperty(key)
+            }
+
+            // apply plugin
+            project.pluginManager.apply(RunTestsSeparateJVMPlugin::class.java)
+
+            // assert that extension exists and is configured correctly
+            val extension = project.extensions.getByType(RunTestsSeparateJVMPluginExtension::class.java)
+
+            Assert.assertEquals(
+                it[RunTestsSeparateJVMPlugin.KEY_TIMEOUT_SEQUENTIAL].toString().toLong(),
+                extension.sequentialTimeout.get()
+            )
+            Assert.assertEquals(
+                it[RunTestsSeparateJVMPlugin.KEY_TIMEOUT_PARALLEL].toString().toLong(),
+                extension.parallelTimeout.get()
+            )
+
+            // assert that task timeouts are configured correctly
+            val testSequentially = project.tasks.getByName(
+                RunTestsSeparateJVMPlugin.sequentialTestsTaskName
+            ) as org.gradle.api.tasks.testing.Test
+            val testInParallel = project.tasks.getByName(
+                RunTestsSeparateJVMPlugin.parallelTestsTaskName
+            ) as org.gradle.api.tasks.testing.Test
+
+            Assert.assertEquals(
+                Duration.of(
+                    it[RunTestsSeparateJVMPlugin.KEY_TIMEOUT_SEQUENTIAL].toString().toLong(), ChronoUnit.MINUTES
+                ),
+                testSequentially.timeout.get()
+            )
+            Assert.assertEquals(
+                Duration.of(
+                    it[RunTestsSeparateJVMPlugin.KEY_TIMEOUT_PARALLEL].toString().toLong(), ChronoUnit.MINUTES
+                ),
+                testInParallel.timeout.get()
+            )
+        }
+    }
+
+
+    /** 21) Tests applying the plugin with explicit timeout (but is invalid) */
+    @Test fun testApplyPluginWithExplicitTimeoutWrong() {
+        listOf(wrong5Properties, wrong6Properties).forEach {
+            val project = ProjectBuilder.builder().build()
+
+            // apply Java plugin
+            project.pluginManager.apply(JavaPlugin::class.java)
+
+            // project gradle.properties reference (correct/project.properties.set can not be used directly!)
+            val propertiesExtension = project.extensions.getByType(ExtraPropertiesExtension::class.java)
+            it.keys.forEach { key ->
+                propertiesExtension[key as String] = it.getProperty(key)
+            }
+
+            try {
+                // try applying plugin (should fail)
+                project.pluginManager.apply(RunTestsSeparateJVMPlugin::class.java)
+            } catch (e: Exception) {
+                // assert applying did not work
+                // INFO: equal to check on InvalidUserDataException as it is based on it
+                Assert.assertTrue(e.cause is TimeoutValueInvalidException)
+            }
+
+            Assert.assertFalse(project.plugins.hasPlugin(RunTestsSeparateJVMPlugin::class.java))
+        }
     }
 }

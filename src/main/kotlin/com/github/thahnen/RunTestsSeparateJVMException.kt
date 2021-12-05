@@ -41,3 +41,9 @@ open class PropertiesEntryInvalidException(message: String) : RunTestsSeparateJV
  *  Exception thrown when test class provided in property entry for both sequential / parallel testing
  */
 open class TestInBothTasksException(message: String) : RunTestsSeparateJVMException(message)
+
+
+/**
+ *  Exception thrown when timeout property provided cannot be cast to long!
+ */
+open class TimeoutValueInvalidException(message: String) : RunTestsSeparateJVMException(message)

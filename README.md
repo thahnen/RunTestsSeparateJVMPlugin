@@ -22,6 +22,14 @@ plugins.runtestsseparatejvm.listOfTests.sequential=Set<String>
 # List of tasks which should be run in separate JVM and in parallel
 plugins.runtestsseparatejvm.listOfTests.parallel=Set<String>
 
+# (Optional) Timeout for running task in separate JVM and sequentially
+# -> Unit is minutes (would override inherited timeout) / ignored when no tests given!
+plugins.runtestsseparatejvm.timeout.sequential=Int
+
+# (Optional) Timeout for running task in separate JVM and in parallel
+# -> Unit is minutes (would override inherited timeout) / ignored when no tests given!
+plugins.runtestsseparatejvm.timeout.parallel=Int
+
 # (Optional) Inherit configuration from standard Gradle test task named "test"
 # -> This only inherits a fraction of possible configurations yet (including timeout)!
 plugins.runtestsseparatejvm.inheritTestConfiguration=Boolean

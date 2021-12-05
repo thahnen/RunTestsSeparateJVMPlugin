@@ -37,4 +37,16 @@ open class RunTestsSeparateJVMUtilitiesTest {
 
         Assert.assertTrue(notSetByMultipleLet)
     }
+
+
+    /** 3) Tests the multipleLet method by providing only null values */
+    @Test fun testMultipleLetOnlyNull() {
+        var notSetByMultipleLet = true
+
+        multipleLet(null, null) {
+            notSetByMultipleLet = false
+        }
+
+        Assert.assertTrue(notSetByMultipleLet)
+    }
 }

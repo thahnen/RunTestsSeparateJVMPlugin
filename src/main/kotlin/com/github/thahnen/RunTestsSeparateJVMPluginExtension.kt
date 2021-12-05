@@ -21,6 +21,12 @@ abstract class RunTestsSeparateJVMPluginExtension {
     /** stores all jUnit test classes which should be run in separate JVM but executed in parallel */
     abstract val parallelTests: SetProperty<String>
 
+    /** (optional) stores timeout for running jUnit tests in separate JVM sequentially */
+    abstract val sequentialTimeout: Property<Long?>
+
+    /** (optional) stores timeout for running jUnit tests in separate JVM in parallel */
+    abstract val parallelTimeout: Property<Long?>
+
     /**
      *  stores if both (or only one, depends on properties provided) new test tasks should inherit configurations from
      *  default Gradle test task named "test"

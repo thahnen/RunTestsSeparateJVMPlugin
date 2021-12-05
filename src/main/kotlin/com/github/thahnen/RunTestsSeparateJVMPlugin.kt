@@ -1,5 +1,7 @@
 package com.github.thahnen
 
+import java.time.Duration
+import java.time.temporal.ChronoUnit
 import java.util.Properties
 
 import kotlin.jvm.Throws
@@ -37,12 +39,16 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         // identifiers of properties connected to this plugin
         internal const val KEY_SEQUENTIAL           = "plugins.runtestsseparatejvm.listOfTests.sequential"
         internal const val KEY_PARALLEL             = "plugins.runtestsseparatejvm.listOfTests.parallel"
+        internal const val KEY_TIMEOUT_SEQUENTIAL   = "plugins.runtestsseparatejvm.timeout.sequential"
+        internal const val KEY_TIMEOUT_PARALLEL     = "plugins.runtestsseparatejvm.timeout.parallel"
         internal const val KEY_INHERIT              = "plugins.runtestsseparatejvm.inheritTestConfiguration"
         internal const val KEY_INHERIT_TESTRETRY    = "plugins.runtestsseparatejvm.inheritTestRetryConfiguration"
 
         // internal identifiers of properties connected to this plugin
         private const val INTERNAL_SEQUENTIAL           = "listOfTests.sequential"
         private const val INTERNAL_PARALLEL             = "listOfTests.parallel"
+        private const val INTERNAL_TIMEOUT_SEQUENTIAL   = "timeout.sequential"
+        private const val INTERNAL_TIMEOUT_PARALLEL     = "timeout.parallel"
         private const val INTERNAL_INHERIT              = "inheritTestConfiguration"
         private const val INTERNAL_INHERIT_TESTRETRY    = "inheritTestRetryConfiguration"
 
@@ -72,8 +78,7 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         // 1) check if Java plugin applied to target (necessary because check on test task)
         if (!target.plugins.hasPlugin(JavaPlugin::class.java)) {
             throw PluginAppliedUnnecessarilyException(
-                "[${this@RunTestsSeparateJVMPlugin::class.simpleName}] Plugin shouldn't be applied when Java plugin " +
-                "isn't used!"
+                "[${this::class.simpleName}] Plugin shouldn't be applied when Java plugin isn't used!"
             )
         }
 
@@ -86,9 +91,8 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
             && properties.containsKey(INTERNAL_INHERIT_TESTRETRY)
             && (properties[INTERNAL_INHERIT_TESTRETRY] as String).toBoolean()) {
             target.logger.warn(
-                "[${this@RunTestsSeparateJVMPlugin::class.simpleName} - WARNING] '$KEY_INHERIT_TESTRETRY' provided " +
-                "and set to true but no 'test-retry' plugin applied to this project. You may remove the property " +
-                "from this project!"
+                "[${this::class.simpleName} - WARNING] '$KEY_INHERIT_TESTRETRY' provided and set to true but no " +
+                "'test-retry' plugin applied to this project. You may remove the property from this project!"
             )
         }
 
@@ -99,17 +103,17 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
             target.tasks.findByName("test")?.let {
                 if (it !is Test) {
                     throw TaskNamedTestNotFoundException(
-                        "[${this@RunTestsSeparateJVMPlugin::class.simpleName}] A task named 'test' was found in " +
-                        "project '${target.name}' but it is not a Gradle task of type ${Test::class.java.name}! But " +
-                        "property '$KEY_INHERIT' provided and set to true which needs this task to configure the new " +
-                        "test tasks introduced by this plugin!"
+                        "[${this::class.simpleName}] A task named 'test' was found in project '${target.name}' but " +
+                        "it is not a Gradle task of type ${Test::class.java.name}! But property '$KEY_INHERIT' " +
+                        "provided and set to true which needs this task to configure the new test tasks introduced " +
+                        "by this plugin!"
                     )
                 }
             } ?: run {
                 throw TaskNamedTestNotFoundException(
-                    "[${this@RunTestsSeparateJVMPlugin::class.simpleName}] No task named 'test' was found in " +
-                    "project '${target.name}' of type ${Test::class.java.name}! But property '$KEY_INHERIT' provided " +
-                    "and set to true which needs this task to configure the new test tasks introduced by this plugin!"
+                    "[${this::class.simpleName}] No task named 'test' was found in project '${target.name}' of type " +
+                    "${Test::class.java.name}! But property '$KEY_INHERIT' provided and set to true which needs this " +
+                    "task to configure the new test tasks introduced by this plugin!"
                 )
             }
         }
@@ -122,8 +126,7 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
             sequentialTests = parseListByCommas(properties[INTERNAL_SEQUENTIAL] as String)
             if (sequentialTests.isEmpty() || (sequentialTests.size == 1 && sequentialTests.first() == "")) {
                 throw PropertiesEntryInvalidException(
-                    "[${this@RunTestsSeparateJVMPlugin::class.simpleName}] $KEY_SEQUENTIAL provided but invalid " +
-                    "(empty / blank)!"
+                    "[${this::class.simpleName}] $KEY_SEQUENTIAL provided but invalid (empty / blank)!"
                 )
             }
         }
@@ -132,8 +135,7 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
             parallelTests = parseListByCommas(properties[INTERNAL_PARALLEL] as String)
             if (parallelTests.isEmpty() || (parallelTests.size == 1 && parallelTests.first() == "")) {
                 throw PropertiesEntryInvalidException(
-                    "[${this@RunTestsSeparateJVMPlugin::class.simpleName}] $KEY_PARALLEL provided but invalid " +
-                    "(empty / blank)!"
+                    "[${this::class.simpleName}] $KEY_PARALLEL provided but invalid (empty / blank)!"
                 )
             }
         }
@@ -141,10 +143,36 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         // 6) evaluate test sets provided
         evaluateTestSets(target, sequentialTests, parallelTests)
 
-        // 7) custom extension to store tha data
+        // 7) try to parse timeouts
+        var sequentialTimeout: Long? = null
+        var parallelTimeout: Long? = null
+
+        if (properties.containsKey(INTERNAL_TIMEOUT_SEQUENTIAL)) {
+            try {
+                sequentialTimeout = properties[INTERNAL_TIMEOUT_SEQUENTIAL].toString().toLong()
+            } catch(ignored: Exception) {
+                throw TimeoutValueInvalidException(
+                    "[${this::class.simpleName}] '$KEY_SEQUENTIAL' provided but invalid (could not be casted to long)!"
+                )
+            }
+        }
+
+        if (properties.containsKey(INTERNAL_TIMEOUT_PARALLEL)) {
+            try {
+                parallelTimeout = properties[INTERNAL_TIMEOUT_PARALLEL].toString().toLong()
+            } catch(ignored: Exception) {
+                throw TimeoutValueInvalidException(
+                    "[${this::class.simpleName}] '$KEY_PARALLEL' provided but invalid (could not be casted to long)!"
+                )
+            }
+        }
+
+        // 8) custom extension to store tha data
         val extension = target.extensions.create<RunTestsSeparateJVMPluginExtension>(KEY_EXTENSION)
         sequentialTests?.let { extension.sequentialTests.set(it) } ?: run { extension.sequentialTests.empty() }
         parallelTests?.let { extension.parallelTests.set(it) } ?: run { extension.parallelTests.empty() }
+        sequentialTimeout?.let { extension.sequentialTimeout.set(it) }
+        parallelTimeout?.let { extension.parallelTimeout.set(it) }
         extension.inheritConfiguration.set(
             when (properties.containsKey(INTERNAL_INHERIT)) {
                 true -> (properties[INTERNAL_INHERIT] as String).toBoolean()
@@ -158,7 +186,7 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
             }
         )
 
-        // 8) register new task of type "Test" for jUnit tests running sequentially in separate JVM
+        // 9) register new task of type "Test" for jUnit tests running sequentially in separate JVM
         val test = target.tasks.getByName("test") as Test
 
         sequentialTests?.let {
@@ -173,11 +201,21 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
                     maxHeapSize     = test.maxHeapSize
                     minHeapSize     = test.minHeapSize
 
-                    timeout.set(test.timeout)
+                    // only inherit timeout if not specifically set
+                    sequentialTimeout?.let {
+                        timeout.set(Duration.of(it, ChronoUnit.MINUTES))
+                    } ?: run {
+                        timeout.set(test.timeout)
+                    }
 
                     parallelForks = test.maxParallelForks
                 } else {
                     group = "verification"
+
+                    // set timeout if specifically set
+                    sequentialTimeout?.let {
+                        timeout.set(Duration.of(it, ChronoUnit.MINUTES))
+                    }
 
                     parallelForks = maxParallelForks
                 }
@@ -204,7 +242,7 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
             }
         }
 
-        // 9) register new task of type "Test" for jUnit tests running in parallel in separate JVM
+        // 10) register new task of type "Test" for jUnit tests running in parallel in separate JVM
         parallelTests?.let {
             target.tasks.register<Test>(parallelTestsTaskName) {
                 if (properties.containsKey(INTERNAL_INHERIT) && (properties[INTERNAL_INHERIT] as String).toBoolean()) {
@@ -216,9 +254,19 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
                     maxParallelForks    = test.maxParallelForks
                     minHeapSize         = test.minHeapSize
 
-                    timeout.set(test.timeout)
+                    // only inherit timeout if not specifically set
+                    parallelTimeout?.let {
+                        timeout.set(Duration.of(it, ChronoUnit.MINUTES))
+                    } ?: run {
+                        timeout.set(test.timeout)
+                    }
                 } else {
                     group = "verification"
+
+                    // set timeout if specifically set
+                    parallelTimeout?.let {
+                        timeout.set(Duration.of(it, ChronoUnit.MINUTES))
+                    }
                 }
 
                 description = "Run jUnit test classes in separate JVM in parallel!"
@@ -238,17 +286,17 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
             }
         }
 
-        // 10) remove sequentially / parallel running test from all other tasks of type Test
+        // 11) remove sequentially / parallel running test from all other tasks of type Test
         target.tasks.withType(Test::class.java) {
             sequentialTests?.let {
                 if (this.name != sequentialTestsTaskName) {
-                    filter { it.forEach { excludeTestsMatching(it) } }
+                    filter { it.forEach { @Suppress("UnstableApiUsage")excludeTestsMatching(it) } }
                 }
             }
 
             parallelTests?.let {
                 if (this.name != parallelTestsTaskName) {
-                    filter { it.forEach { excludeTestsMatching(it) } }
+                    filter { it.forEach { @Suppress("UnstableApiUsage")excludeTestsMatching(it) } }
                 }
             }
         }
@@ -278,15 +326,20 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
 
         handlePropertyProjectSystemPropSystemEnv(target, properties, KEY_SEQUENTIAL, INTERNAL_SEQUENTIAL)
         handlePropertyProjectSystemPropSystemEnv(target, properties, KEY_PARALLEL, INTERNAL_PARALLEL)
+        handlePropertyProjectSystemPropSystemEnv(
+            target, properties, KEY_TIMEOUT_SEQUENTIAL, INTERNAL_TIMEOUT_SEQUENTIAL
+        )
+        handlePropertyProjectSystemPropSystemEnv(target, properties, KEY_TIMEOUT_PARALLEL, INTERNAL_TIMEOUT_PARALLEL)
         handlePropertyProjectSystemPropSystemEnv(target, properties, KEY_INHERIT, INTERNAL_INHERIT)
         handlePropertyProjectSystemPropSystemEnv(target, properties, KEY_INHERIT_TESTRETRY, INTERNAL_INHERIT_TESTRETRY)
 
-        if (properties.size == 0 || (properties.size == 1 && properties.containsKey(INTERNAL_INHERIT))) {
+        if (properties.size == 0
+            || (!properties.containsKey(INTERNAL_SEQUENTIAL) && !properties.containsKey(INTERNAL_PARALLEL))) {
             // This should not be possible
             throw MissingPropertiesEntryException(
-                "[${this@RunTestsSeparateJVMPlugin::class.simpleName}] Neither property for jUnit tests with " +
-                "separate JVM running sequentially ($KEY_SEQUENTIAL) found or property for jUnit tests with separate " +
-                "JVM running in parallel ($KEY_PARALLEL)!"
+                "[${this::class.simpleName}] Neither property for jUnit tests with separate JVM running sequentially " +
+                "($KEY_SEQUENTIAL) found or property for jUnit tests with separate JVM running in parallel " +
+                "($KEY_PARALLEL)!"
             )
         }
 
@@ -343,10 +396,9 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         sequentialTests?.let { tests ->
             val filtered = tests.filter { it.contains(".") || it.contains("*") }
             if (filtered.isNotEmpty()) {
-                var message = "[${this@RunTestsSeparateJVMPlugin::class.simpleName} - WARNING] The following test " +
-                                "classes provided to be run sequentially contain a package or asterisk. This can " +
-                                "lead to incomprehensible test results! With this message you've been warned and my " +
-                                "job here is done!"
+                var message = "[${this::class.simpleName} - WARNING] The following test classes provided to be run " +
+                                "sequentially contain a package or asterisk. This can lead to incomprehensible test " +
+                                "results! With this message you've been warned and my job here is done!"
                 filtered.forEach { message += "\n - $it" }
 
                 target.logger.warn(message)
@@ -356,10 +408,9 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         parallelTests?.let { tests ->
             val filtered = tests.filter { it.contains(".") || it.contains("*") }
             if (filtered.isNotEmpty()) {
-                var message = "[${this@RunTestsSeparateJVMPlugin::class.simpleName} - WARNING] The following test " +
-                                "classes provided to be run in parallel contain a package or asterisk. This can lead " +
-                                "to incomprehensible test results! With this message you've been warned and my job " +
-                                "here is done!"
+                var message = "[${this::class.simpleName} - WARNING] The following test classes provided to be run " +
+                                "in parallel contain a package or asterisk. This can lead to incomprehensible test " +
+                                "results! With this message you've been warned and my job here is done!"
                 filtered.forEach { message += "\n - $it" }
 
                 target.logger.warn(message)
@@ -370,8 +421,8 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
             val intersect = sTests.intersect(pTests)
 
             if (intersect.isNotEmpty()) {
-                var message = "[${this@RunTestsSeparateJVMPlugin::class.simpleName}] The following test classes " +
-                                "provided can not be both executed in separate JVM sequentially and in parallel:"
+                var message = "[${this::class.simpleName}] The following test classes provided can not be both " +
+                                "executed in separate JVM sequentially and in parallel:"
                 intersect.forEach { message += "\n - $it" }
 
                 throw TestInBothTasksException(message)

@@ -96,7 +96,7 @@ gradlePlugin {
 
 
 /** 11) Configuration for publishing to private Maven Nexus repository */
-System.getenv("PRIVATE_NEXUS_AVAILABLE")?.let {
+if (System.getenv().containsKey("PRIVATE_NEXUS_AVAILABLE")) {
     publishing {
         repositories {
             maven {
