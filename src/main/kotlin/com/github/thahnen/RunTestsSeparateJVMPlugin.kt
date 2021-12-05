@@ -43,6 +43,7 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         internal const val KEY_TIMEOUT_PARALLEL     = "plugins.runtestsseparatejvm.timeout.parallel"
         internal const val KEY_INHERIT              = "plugins.runtestsseparatejvm.inheritTestConfiguration"
         internal const val KEY_INHERIT_TESTRETRY    = "plugins.runtestsseparatejvm.inheritTestRetryConfiguration"
+        internal const val KEY_SILENCED             = "plugins.runtestsseparatejvm.silenced"
 
         // internal identifiers of properties connected to this plugin
         private const val INTERNAL_SEQUENTIAL           = "listOfTests.sequential"
@@ -51,6 +52,7 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         private const val INTERNAL_TIMEOUT_PARALLEL     = "timeout.parallel"
         private const val INTERNAL_INHERIT              = "inheritTestConfiguration"
         private const val INTERNAL_INHERIT_TESTRETRY    = "inheritTestRetryConfiguration"
+        private const val INTERNAL_SILENCED             = "silenced"
 
         // identifier of system property / environment variable to disable dependencies for Gradle "test" task
         internal const val KEY_DISABLEDEPENDENCIES = "disableTestDependencies"
@@ -85,15 +87,23 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         // 2) retrieve necessary property entries
         val properties = readProperties(target)
 
+        // 3) check if silenced mode enabled
+        var silenced = false
+        if (properties.containsKey(INTERNAL_SILENCED)) {
+            silenced = properties[INTERNAL_SILENCED].toString().toBoolean()
+        }
+
         // 3) check if "test-retry" plugin applied to target (only then configuration will be inherited)
         val testRetryPluginFound = target.plugins.hasPlugin(TestRetryPlugin::class.java)
         if (!testRetryPluginFound
             && properties.containsKey(INTERNAL_INHERIT_TESTRETRY)
             && (properties[INTERNAL_INHERIT_TESTRETRY] as String).toBoolean()) {
-            target.logger.warn(
-                "[${this::class.simpleName} - WARNING] '$KEY_INHERIT_TESTRETRY' provided and set to true but no " +
-                "'test-retry' plugin applied to this project. You may remove the property from this project!"
-            )
+            when {
+                !silenced -> target.logger.warn(
+                    "[${this::class.simpleName} - WARNING] '$KEY_INHERIT_TESTRETRY' provided and set to true but no " +
+                    "'test-retry' plugin applied to this project. You may remove the property from this project!"
+                )
+            }
         }
 
         // 4) check if configurations should be inherited but no Gradle task named "test" found
@@ -141,7 +151,7 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         }
 
         // 6) evaluate test sets provided
-        evaluateTestSets(target, sequentialTests, parallelTests)
+        evaluateTestSets(target, sequentialTests, parallelTests, silenced)
 
         // 7) try to parse timeouts
         var sequentialTimeout: Long? = null
@@ -332,6 +342,7 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
         handlePropertyProjectSystemPropSystemEnv(target, properties, KEY_TIMEOUT_PARALLEL, INTERNAL_TIMEOUT_PARALLEL)
         handlePropertyProjectSystemPropSystemEnv(target, properties, KEY_INHERIT, INTERNAL_INHERIT)
         handlePropertyProjectSystemPropSystemEnv(target, properties, KEY_INHERIT_TESTRETRY, INTERNAL_INHERIT_TESTRETRY)
+        handlePropertyProjectSystemPropSystemEnv(target, properties, KEY_SILENCED, INTERNAL_SILENCED)
 
         if (properties.size == 0
             || (!properties.containsKey(INTERNAL_SEQUENTIAL) && !properties.containsKey(INTERNAL_PARALLEL))) {
@@ -392,10 +403,11 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
      *  @throws TestInBothTasksException when test class(es) provided to both test tasks
      */
     @Throws(TestInBothTasksException::class)
-    private fun evaluateTestSets(target: Project, sequentialTests: Set<String>?, parallelTests: Set<String>?) {
+    private fun evaluateTestSets(target: Project, sequentialTests: Set<String>?, parallelTests: Set<String>?,
+                                 silenced: Boolean) {
         sequentialTests?.let { tests ->
             val filtered = tests.filter { it.contains(".") || it.contains("*") }
-            if (filtered.isNotEmpty()) {
+            if (filtered.isNotEmpty() && !silenced) {
                 var message = "[${this::class.simpleName} - WARNING] The following test classes provided to be run " +
                                 "sequentially contain a package or asterisk. This can lead to incomprehensible test " +
                                 "results! With this message you've been warned and my job here is done!"
@@ -407,7 +419,7 @@ open class RunTestsSeparateJVMPlugin : Plugin<Project> {
 
         parallelTests?.let { tests ->
             val filtered = tests.filter { it.contains(".") || it.contains("*") }
-            if (filtered.isNotEmpty()) {
+            if (filtered.isNotEmpty() && !silenced) {
                 var message = "[${this::class.simpleName} - WARNING] The following test classes provided to be run " +
                                 "in parallel contain a package or asterisk. This can lead to incomprehensible test " +
                                 "results! With this message you've been warned and my job here is done!"

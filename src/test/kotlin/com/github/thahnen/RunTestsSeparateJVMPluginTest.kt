@@ -40,13 +40,15 @@ open class RunTestsSeparateJVMPluginTest {
         private val correct7ProjectPropertiesPath   = resource("correct/project7.properties")
         private val correct8ProjectPropertiesPath   = resource("correct/project8.properties")
         private val correct9ProjectPropertiesPath   = resource("correct/project9.properties")
-        private val correct10ProjectPropertiesPath   = resource("correct/project10.properties")
+        private val correct10ProjectPropertiesPath  = resource("correct/project10.properties")
+        private val correct11ProjectPropertiesPath  = resource("correct/project11.properties")
         private val wrong1ProjectPropertiesPath     = resource("wrong/project1.properties")
         private val wrong2ProjectPropertiesPath     = resource("wrong/project2.properties")
         private val wrong3ProjectPropertiesPath     = resource("wrong/project3.properties")
         private val wrong4ProjectPropertiesPath     = resource("wrong/project4.properties")
         private val wrong5ProjectPropertiesPath     = resource("wrong/project5.properties")
         private val wrong6ProjectPropertiesPath     = resource("wrong/project6.properties")
+        private val wrong7ProjectPropertiesPath     = resource("wrong/project7.properties")
 
         // test cases properties
         private val correct1Properties = Properties()
@@ -59,12 +61,14 @@ open class RunTestsSeparateJVMPluginTest {
         private val correct8Properties = Properties()
         private val correct9Properties = Properties()
         private val correct10Properties = Properties()
+        private val correct11Properties = Properties()
         private val wrong1Properties = Properties()
         private val wrong2Properties = Properties()
         private val wrong3Properties = Properties()
         private val wrong4Properties = Properties()
         private val wrong5Properties = Properties()
         private val wrong6Properties = Properties()
+        private val wrong7Properties = Properties()
 
 
         /** internally used simplified resource loader */
@@ -86,12 +90,14 @@ open class RunTestsSeparateJVMPluginTest {
             correct8Properties.load(FileInputStream(correct8ProjectPropertiesPath))
             correct9Properties.load(FileInputStream(correct9ProjectPropertiesPath))
             correct10Properties.load(FileInputStream(correct10ProjectPropertiesPath))
+            correct11Properties.load(FileInputStream(correct11ProjectPropertiesPath))
             wrong1Properties.load(FileInputStream(wrong1ProjectPropertiesPath))
             wrong2Properties.load(FileInputStream(wrong2ProjectPropertiesPath))
             wrong3Properties.load(FileInputStream(wrong3ProjectPropertiesPath))
             wrong4Properties.load(FileInputStream(wrong4ProjectPropertiesPath))
             wrong5Properties.load(FileInputStream(wrong5ProjectPropertiesPath))
             wrong6Properties.load(FileInputStream(wrong6ProjectPropertiesPath))
+            wrong7Properties.load(FileInputStream(wrong7ProjectPropertiesPath))
         }
     }
 
@@ -829,5 +835,81 @@ open class RunTestsSeparateJVMPluginTest {
 
             Assert.assertFalse(project.plugins.hasPlugin(RunTestsSeparateJVMPlugin::class.java))
         }
+    }
+
+
+    /** 22) Tests applying the plugin but silenced */
+    @Test fun testApplyPluginWithSilencedMode() {
+        val project = ProjectBuilder.builder().build()
+
+        // apply Java plugin
+        project.pluginManager.apply(JavaPlugin::class.java)
+
+        // project gradle.properties reference (correct/project.properties.set can not be used directly!)
+        val propertiesExtension = project.extensions.getByType(ExtraPropertiesExtension::class.java)
+        correct11Properties.keys.forEach { key ->
+            propertiesExtension[key as String] = correct11Properties.getProperty(key)
+        }
+
+        // set listener to evaluate output logged by plugin
+        project.logging.addStandardOutputListener { message ->
+            Assert.assertFalse(
+                message.contains(
+                    "[${RunTestsSeparateJVMPlugin::class.simpleName}] The following test classes provided"
+                ) || message.contains(
+                    "contain a package or asterisk. This can lead to incomprehensible test results! With " +
+                    "this message you've been warned and my job here is done!"
+                ) || message.contains(
+                    "[${RunTestsSeparateJVMPlugin::class.simpleName} - WARNING] " +
+                    "'${RunTestsSeparateJVMPlugin.KEY_INHERIT_TESTRETRY}' provided and set to true but no " +
+                    "'test-retry' plugin applied to this project. You may remove the property from this project!"
+                )
+            )
+        }
+
+        // apply plugin
+        project.pluginManager.apply(RunTestsSeparateJVMPlugin::class.java)
+
+        Assert.assertTrue(project.plugins.hasPlugin(RunTestsSeparateJVMPlugin::class.java))
+    }
+
+
+    /** 23) Tests applying the plugin but silenced (wrong property value) */
+    @Test fun testApplyPluginWithSilencedModeWrong() {
+        val project = ProjectBuilder.builder().build()
+
+        // apply Java plugin
+        project.pluginManager.apply(JavaPlugin::class.java)
+
+        // project gradle.properties reference (correct/project.properties.set can not be used directly!)
+        val propertiesExtension = project.extensions.getByType(ExtraPropertiesExtension::class.java)
+        wrong7Properties.keys.forEach { key ->
+            propertiesExtension[key as String] = wrong7Properties.getProperty(key)
+        }
+
+        Assert.assertFalse(
+            wrong7Properties.getProperty(RunTestsSeparateJVMPlugin.KEY_SILENCED).equals("false", ignoreCase = true)
+        )
+
+        // set listener to evaluate output logged by plugin
+        project.logging.addStandardOutputListener { message ->
+            Assert.assertTrue(
+                message.contains(
+                    "[${RunTestsSeparateJVMPlugin::class.simpleName}] The following test classes provided"
+                ) && message.contains(
+                    "contain a package or asterisk. This can lead to incomprehensible test results! With " +
+                    "this message you've been warned and my job here is done!"
+                ) && message.contains(
+                    "[${RunTestsSeparateJVMPlugin::class.simpleName} - WARNING] " +
+                    "'${RunTestsSeparateJVMPlugin.KEY_INHERIT_TESTRETRY}' provided and set to true but no " +
+                    "'test-retry' plugin applied to this project. You may remove the property from this project!"
+                )
+            )
+        }
+
+        // apply plugin
+        project.pluginManager.apply(RunTestsSeparateJVMPlugin::class.java)
+
+        Assert.assertTrue(project.plugins.hasPlugin(RunTestsSeparateJVMPlugin::class.java))
     }
 }

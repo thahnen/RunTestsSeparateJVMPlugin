@@ -36,6 +36,9 @@ plugins.runtestsseparatejvm.inheritTestConfiguration=Boolean
 
 # (Optional) Inherit configuration from Gradle "test-retry" plugin and its extension of task named "test" if found
 plugins.runtestsseparatejvm.inheritTestRetryConfiguration=Boolean
+
+# (Optional) Silence warnings / information produced by this plugin
+plugins.runtestsseparatejvm.silenced=Boolean
 ```
 
 You can choose to only use a configuration to run tests sequentially or in parallel or both!
