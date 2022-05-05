@@ -1,7 +1,7 @@
 # RunTestsSeparateJVMPlugin
 
-![example workflow](https://github.com/thahnen/RunTestsSeperateJVMPlugin/actions/workflows/gradle.yml/badge.svg)
-![example workflow](https://github.com/thahnen/RunTestsSeperateJVMPlugin/actions/workflows/gradle_validation.yml/badge.svg)
+![GitHub Action](https://github.com/thahnen/RunTestsSeperateJVMPlugin/actions/workflows/gradle.yml/badge.svg)
+![Azure Pipeline](https://dev.azure.com/hahnentt/Gradle%20Plugins/_apis/build/status/thahnen.RunTestsSeparateJVMPlugin?branchName=main)
 [![Coverage](.github/badges/jacoco.svg)](https://github.com/thahnen/RunTestsSeperateJVMPlugin/actions/workflows/gradle.yml)
 
 Gradle plugin to configure jUnit tests which should be run in a separate JVM. Also allows distinguishing between running
